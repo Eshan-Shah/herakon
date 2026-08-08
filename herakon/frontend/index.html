@@ -200,6 +200,199 @@
 
             </section>
 
+            <section class="empty-state">
+
+    <h3>No workouts yet</h3>
+
+    <p>
+        Your completed workouts will appear here.
+    </p>
+
+    <button id="add-workout-button">
+        + Add workout
+    </button>
+
+</section>  
+
+<section class="workout-section">
+
+    <div class="section-header">
+
+        <h2>Workouts</h2>
+
+        <button id="add-workout-button">
+            + Add workout
+        </button>
+
+    </div>
+
+
+    <!-- ADD WORKOUT FORM -->
+
+    <div
+        id="workout-form-container"
+        class="workout-form-container hidden"
+    >
+
+        <h3>Add workout</h3>
+
+        <form id="workout-form">
+
+            <label>
+                Sport
+
+                <select id="workout-sport" required>
+
+                    <option value="">
+                        Select sport
+                    </option>
+
+                    <option value="swim">
+                        🏊 Swim
+                    </option>
+
+                    <option value="bike">
+                        🚴 Bike
+                    </option>
+
+                    <option value="run">
+                        🏃 Run
+                    </option>
+
+                    <option value="gym">
+                        🏋️ Gym
+                    </option>
+
+                </select>
+
+            </label>
+
+
+            <label>
+                Workout type
+
+                <select
+                    id="workout-type"
+                    required
+                >
+
+                    <option value="">
+                        Select type
+                    </option>
+
+                    <option value="recovery">
+                        Recovery
+                    </option>
+
+                    <option value="aerobic">
+                        Aerobic
+                    </option>
+
+                    <option value="interval">
+                        Interval
+                    </option>
+
+                    <option value="tempo">
+                        Tempo
+                    </option>
+
+                    <option value="long">
+                        Long
+                    </option>
+
+                    <option value="other">
+                        Other
+                    </option>
+
+                </select>
+
+            </label>
+
+
+            <label>
+                Date
+
+                <input
+                    id="workout-date"
+                    type="date"
+                    required
+                >
+
+            </label>
+
+
+            <label>
+                Distance (km)
+
+                <input
+                    id="workout-distance"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 10.5"
+                >
+
+            </label>
+
+
+            <label>
+                Duration (minutes)
+
+                <input
+                    id="workout-duration"
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="e.g. 52"
+                >
+
+            </label>
+
+
+            <label>
+                Notes
+
+                <textarea
+                    id="workout-notes"
+                    placeholder="Anything worth remembering..."
+                ></textarea>
+
+            </label>
+
+
+            <div class="form-buttons">
+
+                <button type="submit">
+                    Save workout
+                </button>
+
+                <button
+                    type="button"
+                    id="cancel-workout"
+                    class="secondary-button"
+                >
+                    Cancel
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+
+    <!-- WORKOUT LIST -->
+
+    <div id="workout-list">
+
+        <p class="loading">
+            Loading workouts...
+        </p>
+
+    </div>
+
+</section>
+
         </main>
 
     </div>
