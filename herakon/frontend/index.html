@@ -119,281 +119,336 @@
     </div>
 
 
-    <!-- ==================== DASHBOARD ==================== -->
+    <!-- ==================== APP ==================== -->
 
-    <div id="dashboard-page" class="page hidden">
+    <div id="app-page" class="page hidden">
 
         <header class="navbar">
 
-            <div class="logo">
-                HERAKON
+            <div class="navbar-top">
+
+                <div class="logo">
+                    HERAKON
+                </div>
+
+                <div class="nav-right">
+
+                    <span id="user-name"></span>
+
+                    <button id="logout-button" class="secondary-button">
+                        Logout
+                    </button>
+
+                </div>
+
             </div>
 
-            <div class="nav-right">
+            <nav class="nav-tabs">
 
-                <span id="user-name"></span>
-
-                <button id="logout-button">
-                    Logout
+                <button class="nav-tab active" data-page="today">
+                    Today
                 </button>
 
-            </div>
+                <button class="nav-tab" data-page="calendar">
+                    Calendar
+                </button>
+
+                <button class="nav-tab" data-page="projections">
+                    Projections
+                </button>
+
+            </nav>
 
         </header>
 
 
-        <main class="dashboard">
+        <main class="app-main">
 
-            <section class="welcome">
+            <!-- ==================== TODAY ==================== -->
 
-                <h2>
-                    Welcome back, <span id="dashboard-name"></span>
-                </h2>
+            <section id="today-page" class="app-section">
 
-                <p>
-                    Your endurance journey starts here.
+                <div class="page-header">
+
+                    <div>
+                        <h1>Today</h1>
+                        <p id="today-date-label" class="page-subtitle"></p>
+                    </div>
+
+                    <button id="today-add-button" class="primary-button">
+                        + Add workout
+                    </button>
+
+                </div>
+
+                <div id="today-content">
+                    <p class="loading">Loading workouts...</p>
+                </div>
+
+            </section>
+
+
+            <!-- ==================== CALENDAR ==================== -->
+
+            <section id="calendar-page" class="app-section hidden">
+
+                <div class="page-header">
+
+                    <div>
+                        <h1>Calendar</h1>
+                        <p class="page-subtitle">Completed training, week by week</p>
+                    </div>
+
+                </div>
+
+                <div class="week-summary" id="week-summary">
+
+                    <div class="summary-card">
+                        <span>Swim</span>
+                        <strong id="summary-swim">0.0 km</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Bike</span>
+                        <strong id="summary-bike">0.0 km</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Run</span>
+                        <strong id="summary-run">0.0 km</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Gym</span>
+                        <strong id="summary-gym">0 sessions</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Training time</span>
+                        <strong id="summary-time">0m</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span>Workouts</span>
+                        <strong id="summary-count">0</strong>
+                    </div>
+
+                </div>
+
+                <div class="week-nav">
+
+                    <button id="week-prev" class="secondary-button">
+                        &lsaquo; Previous
+                    </button>
+
+                    <div class="week-nav-center">
+                        <span id="week-range-label" class="week-range-label"></span>
+                        <button id="week-this" class="text-button">
+                            This week
+                        </button>
+                    </div>
+
+                    <button id="week-next" class="secondary-button">
+                        Next &rsaquo;
+                    </button>
+
+                </div>
+
+                <div class="calendar-grid" id="calendar-grid">
+                    <p class="loading">Loading calendar...</p>
+                </div>
+
+            </section>
+
+
+            <!-- ==================== PROJECTIONS ==================== -->
+
+            <section id="projections-page" class="app-section hidden">
+
+                <div class="page-header">
+
+                    <div>
+                        <h1>Projections</h1>
+                        <p class="page-subtitle">Predicted race finish times</p>
+                    </div>
+
+                </div>
+
+                <p class="demo-banner">
+                    Demo predictions — these use example data, not your actual training. Real predictions are coming later.
                 </p>
 
-            </section>
-
-
-            <!-- STATS -->
-
-            <section class="stats-grid">
-
-                <div class="stat-card">
-                    <span>Swimming</span>
-                    <strong>0 km</strong>
-                </div>
-
-                <div class="stat-card">
-                    <span>Cycling</span>
-                    <strong>0 km</strong>
-                </div>
-
-                <div class="stat-card">
-                    <span>Running</span>
-                    <strong>0 km</strong>
-                </div>
-
-                <div class="stat-card">
-                    <span>Total Training</span>
-                    <strong>0 hrs</strong>
-                </div>
+                <div class="projections-grid" id="projections-grid"></div>
 
             </section>
 
-
-            <!-- TEMPORARY CONTENT -->
-
-            <section class="empty-state">
-
-                <h3>No workouts yet</h3>
-
-                <p>
-                    Your completed workouts will appear here.
-                </p>
-
-                <button id="add-workout-button">
-                    + Add workout
-                </button>
-
-            </section>
-
-            <section class="empty-state">
-
-    <h3>No workouts yet</h3>
-
-    <p>
-        Your completed workouts will appear here.
-    </p>
-
-    <button id="add-workout-button">
-        + Add workout
-    </button>
-
-</section>  
-
-<section class="workout-section">
-
-    <div class="section-header">
-
-        <h2>Workouts</h2>
-
-        <button id="add-workout-button">
-            + Add workout
-        </button>
+        </main>
 
     </div>
 
 
-    <!-- ADD WORKOUT FORM -->
+    <!-- ==================== ADD WORKOUT MODAL ==================== -->
 
-    <div
-        id="workout-form-container"
-        class="workout-form-container hidden"
-    >
+    <div id="workout-modal-overlay" class="modal-overlay hidden">
 
-        <h3>Add workout</h3>
+        <div class="modal">
 
-        <form id="workout-form">
+            <div class="modal-header">
 
-            <label>
-                Sport
+                <h3>Add workout</h3>
 
-                <select id="workout-sport" required>
-
-                    <option value="">
-                        Select sport
-                    </option>
-
-                    <option value="swim">
-                        🏊 Swim
-                    </option>
-
-                    <option value="bike">
-                        🚴 Bike
-                    </option>
-
-                    <option value="run">
-                        🏃 Run
-                    </option>
-
-                    <option value="gym">
-                        🏋️ Gym
-                    </option>
-
-                </select>
-
-            </label>
-
-
-            <label>
-                Workout type
-
-                <select
-                    id="workout-type"
-                    required
-                >
-
-                    <option value="">
-                        Select type
-                    </option>
-
-                    <option value="recovery">
-                        Recovery
-                    </option>
-
-                    <option value="aerobic">
-                        Aerobic
-                    </option>
-
-                    <option value="interval">
-                        Interval
-                    </option>
-
-                    <option value="tempo">
-                        Tempo
-                    </option>
-
-                    <option value="long">
-                        Long
-                    </option>
-
-                    <option value="other">
-                        Other
-                    </option>
-
-                </select>
-
-            </label>
-
-
-            <label>
-                Date
-
-                <input
-                    id="workout-date"
-                    type="date"
-                    required
-                >
-
-            </label>
-
-
-            <label>
-                Distance (km)
-
-                <input
-                    id="workout-distance"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="e.g. 10.5"
-                >
-
-            </label>
-
-
-            <label>
-                Duration (minutes)
-
-                <input
-                    id="workout-duration"
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder="e.g. 52"
-                >
-
-            </label>
-
-
-            <label>
-                Notes
-
-                <textarea
-                    id="workout-notes"
-                    placeholder="Anything worth remembering..."
-                ></textarea>
-
-            </label>
-
-
-            <div class="form-buttons">
-
-                <button type="submit">
-                    Save workout
-                </button>
-
-                <button
-                    type="button"
-                    id="cancel-workout"
-                    class="secondary-button"
-                >
-                    Cancel
+                <button id="close-workout-modal" class="icon-button" aria-label="Close">
+                    &times;
                 </button>
 
             </div>
 
-        </form>
+            <form id="workout-form">
 
-    </div>
+                <label>
+                    Sport
+
+                    <select id="workout-sport" required>
+
+                        <option value="">
+                            Select sport
+                        </option>
+
+                        <option value="swim">
+                            🏊 Swim
+                        </option>
+
+                        <option value="bike">
+                            🚴 Bike
+                        </option>
+
+                        <option value="run">
+                            🏃 Run
+                        </option>
+
+                        <option value="gym">
+                            🏋️ Gym
+                        </option>
+
+                    </select>
+
+                </label>
 
 
-    <!-- WORKOUT LIST -->
+                <label>
+                    Workout type
 
-    <div id="workout-list">
+                    <select
+                        id="workout-type"
+                        required
+                    >
 
-        <p class="loading">
-            Loading workouts...
-        </p>
+                        <option value="">
+                            Select type
+                        </option>
 
-    </div>
+                        <option value="recovery">
+                            Recovery
+                        </option>
 
-</section>
+                        <option value="aerobic">
+                            Aerobic
+                        </option>
 
-        </main>
+                        <option value="interval">
+                            Interval
+                        </option>
+
+                        <option value="tempo">
+                            Tempo
+                        </option>
+
+                        <option value="long">
+                            Long
+                        </option>
+
+                        <option value="other">
+                            Other
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <label>
+                    Date
+
+                    <input
+                        id="workout-date"
+                        type="date"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+                    Distance (km)
+
+                    <input
+                        id="workout-distance"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g. 10.5"
+                    >
+
+                </label>
+
+
+                <label>
+                    Duration (minutes)
+
+                    <input
+                        id="workout-duration"
+                        type="number"
+                        step="1"
+                        min="0"
+                        placeholder="e.g. 52"
+                    >
+
+                </label>
+
+
+                <label>
+                    Notes
+
+                    <textarea
+                        id="workout-notes"
+                        placeholder="Anything worth remembering..."
+                    ></textarea>
+
+                </label>
+
+
+                <p id="workout-form-error" class="error hidden"></p>
+
+
+                <div class="form-buttons">
+
+                    <button type="submit">
+                        Save workout
+                    </button>
+
+                    <button
+                        type="button"
+                        id="cancel-workout"
+                        class="secondary-button"
+                    >
+                        Cancel
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
 
     </div>
 

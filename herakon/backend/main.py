@@ -197,6 +197,68 @@ def get_current_user(
 # WORKOUTS
 # ==================================================
 
+class WorkoutRequest(BaseModel):
+    sport: str
+    workout_type: str
+    date: str
+    distance: float | None = None
+    duration: int | None = None
+    notes: str = ""
+
+
+WORKOUTS_FILE = os.path.join(
+    os.path.dirname(__file__),
+    "data",
+    "workouts.json"
+)
+
+
+def load_workouts():
+    os.makedirs(
+        os.path.dirname(WORKOUTS_FILE),
+        exist_ok=True
+    )
+
+    if not os.path.exists(WORKOUTS_FILE):
+        with open(WORKOUTS_FILE, "w") as f:
+            json.dump([], f)
+
+    with open(WORKOUTS_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_workouts(workouts):
+    os.makedirs(
+        os.path.dirname(WORKOUTS_FILE),
+        exist_ok=True
+    )
+
+    with open(WORKOUTS_FILE, "w") as f:
+        json.dump(workouts, f, indent=2)
+
+
+def get_authenticated_user(
+    authorization: str | None
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated."
+        )
+
+    token = authorization.replace("Bearer ", "")
+
+    user_id = sessions.get(token)
+
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired session."
+        )
+
+    return user_id
+
+
 @app.post("/workouts")
 def add_workout(
     workout: WorkoutRequest,
@@ -287,64 +349,3 @@ def delete_workout(
     return {
         "message": "Workout deleted successfully."
     }
-
-class WorkoutRequest(BaseModel):
-    sport: str
-    workout_type: str
-    date: str
-    distance: float | None = None
-    duration: int | None = None
-    notes: str = ""
-
-
-WORKOUTS_FILE = os.path.join(
-    os.path.dirname(__file__),
-    "data",
-    "workouts.json"
-)
-
-
-def load_workouts():
-    os.makedirs(
-        os.path.dirname(WORKOUTS_FILE),
-        exist_ok=True
-    )
-
-    if not os.path.exists(WORKOUTS_FILE):
-        with open(WORKOUTS_FILE, "w") as f:
-            json.dump([], f)
-
-    with open(WORKOUTS_FILE, "r") as f:
-        return json.load(f)
-
-
-def save_workouts(workouts):
-    os.makedirs(
-        os.path.dirname(WORKOUTS_FILE),
-        exist_ok=True
-    )
-
-    with open(WORKOUTS_FILE, "w") as f:
-        json.dump(workouts, f, indent=2)
-
-
-def get_authenticated_user(
-    authorization: str | None
-):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="Not authenticated."
-        )
-
-    token = authorization.replace("Bearer ", "")
-
-    user_id = sessions.get(token)
-
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid or expired session."
-        )
-
-    return user_id
