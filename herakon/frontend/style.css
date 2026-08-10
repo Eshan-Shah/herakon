@@ -529,7 +529,33 @@ button:hover {
 }
 
 
-/* ==================== WEEKLY SUMMARY ==================== */
+/* ==================== SUMMARY BLOCKS ==================== */
+
+.summary-block {
+    margin-bottom: 22px;
+}
+
+.summary-block-label {
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.6px;
+
+    color: var(--muted);
+
+    margin: 0 0 10px 0;
+}
+
+.alltime-summary {
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 14px;
+}
 
 .week-summary {
     display: grid;
@@ -537,8 +563,6 @@ button:hover {
     grid-template-columns: repeat(6, 1fr);
 
     gap: 14px;
-
-    margin-bottom: 24px;
 }
 
 .summary-card {
@@ -692,14 +716,23 @@ button:hover {
 
     padding: 8px;
 
-    flex: 1;
-
     display: flex;
 
     align-items: center;
 
     justify-content: center;
+}
 
+.calendar-day-body:has(.calendar-workout-chip) .calendar-add-button {
+    margin-top: 2px;
+}
+
+.calendar-day-body:not(:has(.calendar-workout-chip)) {
+    flex: 1;
+}
+
+.calendar-day-body:not(:has(.calendar-workout-chip)) .calendar-add-button {
+    flex: 1;
     min-height: 44px;
 }
 
@@ -999,6 +1032,16 @@ button:hover {
     gap: 10px;
 }
 
+.sets-reps-row {
+    display: flex;
+
+    gap: 12px;
+}
+
+.sets-reps-row label {
+    flex: 1;
+}
+
 
 /* ==================== MOBILE ==================== */
 
@@ -1073,7 +1116,8 @@ button:hover {
         flex-direction: column;
     }
 
-    .week-summary {
+    .week-summary,
+    .alltime-summary {
         grid-template-columns: repeat(2, 1fr);
     }
 

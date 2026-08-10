@@ -201,36 +201,67 @@
 
                 </div>
 
-                <div class="week-summary" id="week-summary">
+                <div class="summary-block">
 
-                    <div class="summary-card">
-                        <span>Swim</span>
-                        <strong id="summary-swim">0.0 km</strong>
+                    <h3 class="summary-block-label">All-time totals</h3>
+
+                    <div class="alltime-summary" id="alltime-summary">
+
+                        <div class="summary-card">
+                            <span>Total distance</span>
+                            <strong id="alltime-distance">0.0 km</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Total training time</span>
+                            <strong id="alltime-time">0m</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Total workouts</span>
+                            <strong id="alltime-count">0</strong>
+                        </div>
+
                     </div>
 
-                    <div class="summary-card">
-                        <span>Bike</span>
-                        <strong id="summary-bike">0.0 km</strong>
-                    </div>
+                </div>
 
-                    <div class="summary-card">
-                        <span>Run</span>
-                        <strong id="summary-run">0.0 km</strong>
-                    </div>
+                <div class="summary-block">
 
-                    <div class="summary-card">
-                        <span>Gym</span>
-                        <strong id="summary-gym">0 sessions</strong>
-                    </div>
+                    <h3 class="summary-block-label">This week</h3>
 
-                    <div class="summary-card">
-                        <span>Training time</span>
-                        <strong id="summary-time">0m</strong>
-                    </div>
+                    <div class="week-summary" id="week-summary">
 
-                    <div class="summary-card">
-                        <span>Workouts</span>
-                        <strong id="summary-count">0</strong>
+                        <div class="summary-card">
+                            <span>Swim</span>
+                            <strong id="summary-swim">0.0 km</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Bike</span>
+                            <strong id="summary-bike">0.0 km</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Run</span>
+                            <strong id="summary-run">0.0 km</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Gym</span>
+                            <strong id="summary-gym">0 sessions</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Training time</span>
+                            <strong id="summary-time">0m</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Workouts</span>
+                            <strong id="summary-count">0</strong>
+                        </div>
+
                     </div>
 
                 </div>
@@ -344,31 +375,7 @@
                     >
 
                         <option value="">
-                            Select type
-                        </option>
-
-                        <option value="recovery">
-                            Recovery
-                        </option>
-
-                        <option value="aerobic">
-                            Aerobic
-                        </option>
-
-                        <option value="interval">
-                            Interval
-                        </option>
-
-                        <option value="tempo">
-                            Tempo
-                        </option>
-
-                        <option value="long">
-                            Long
-                        </option>
-
-                        <option value="other">
-                            Other
+                            Select sport first
                         </option>
 
                     </select>
@@ -388,7 +395,7 @@
                 </label>
 
 
-                <label>
+                <label id="distance-field-group">
                     Distance (km)
 
                     <input
@@ -397,6 +404,49 @@
                         step="0.01"
                         min="0"
                         placeholder="e.g. 10.5"
+                    >
+
+                </label>
+
+
+                <div id="sets-reps-field-group" class="sets-reps-row hidden">
+
+                    <label>
+                        Sets
+
+                        <input
+                            id="workout-sets"
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="e.g. 4"
+                        >
+
+                    </label>
+
+                    <label>
+                        Reps
+
+                        <input
+                            id="workout-reps"
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="e.g. 10"
+                        >
+
+                    </label>
+
+                </div>
+
+
+                <label id="pace-field-group" class="hidden">
+                    Pace
+
+                    <input
+                        id="workout-pace"
+                        type="text"
+                        placeholder="e.g. 1:45 /100m or 4:30 /km"
                     >
 
                 </label>

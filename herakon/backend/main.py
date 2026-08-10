@@ -203,6 +203,9 @@ class WorkoutRequest(BaseModel):
     date: str
     distance: float | None = None
     duration: int | None = None
+    sets: int | None = None
+    reps: int | None = None
+    pace: str | None = None
     notes: str = ""
 
 
@@ -279,6 +282,9 @@ def add_workout(
         "date": workout.date,
         "distance": workout.distance,
         "duration": workout.duration,
+        "sets": workout.sets,
+        "reps": workout.reps,
+        "pace": workout.pace,
         "notes": workout.notes
     }
 

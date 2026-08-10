@@ -7,6 +7,26 @@ const SPORT_ICONS = {
     gym: "🏋️"
 };
 
+const ENDURANCE_TYPES = [
+    { value: "recovery", label: "Recovery" },
+    { value: "aerobic", label: "Aerobic" },
+    { value: "interval", label: "Interval" },
+    { value: "tempo", label: "Tempo" },
+    { value: "long", label: "Long" },
+    { value: "other", label: "Other" }
+];
+
+const GYM_TYPES = [
+    { value: "push", label: "Push" },
+    { value: "pull", label: "Pull" },
+    { value: "legs", label: "Legs" },
+    { value: "upper_body", label: "Upper Body" },
+    { value: "lower_body", label: "Lower Body" },
+    { value: "full_body", label: "Full Body" },
+    { value: "core", label: "Core" },
+    { value: "other", label: "Other" }
+];
+
 
 // ==================================================
 // ELEMENTS — AUTH
@@ -78,6 +98,12 @@ const summaryEls = {
     count: document.getElementById("summary-count")
 };
 
+const allTimeEls = {
+    distance: document.getElementById("alltime-distance"),
+    time: document.getElementById("alltime-time"),
+    count: document.getElementById("alltime-count")
+};
+
 const weekRangeLabel =
     document.getElementById("week-range-label");
 
@@ -120,6 +146,21 @@ const closeWorkoutModalButton =
 
 const cancelWorkoutButton =
     document.getElementById("cancel-workout");
+
+const sportSelect =
+    document.getElementById("workout-sport");
+
+const typeSelect =
+    document.getElementById("workout-type");
+
+const distanceFieldGroup =
+    document.getElementById("distance-field-group");
+
+const setsRepsFieldGroup =
+    document.getElementById("sets-reps-field-group");
+
+const paceFieldGroup =
+    document.getElementById("pace-field-group");
 
 
 // ==================================================
@@ -751,6 +792,7 @@ function renderCalendar() {
                 : `<p class="loading">Loading calendar...</p>`;
 
         renderWeekSummary([]);
+        renderAllTimeSummary([]);
 
         return;
     }
@@ -762,6 +804,7 @@ function renderCalendar() {
     );
 
     renderWeekSummary(weekWorkouts);
+    renderAllTimeSummary(allWorkouts);
 
     const todayStr = toDateStr(new Date());
 
@@ -788,11 +831,8 @@ function renderCalendar() {
                 </div>
 
                 <div class="calendar-day-body">
-                    ${
-                        dayWorkouts.length === 0
-                            ? `<button class="calendar-add-button" data-date="${dateStr}">+ Add</button>`
-                            : dayWorkouts.map(createCalendarChip).join("")
-                    }
+                    ${dayWorkouts.map(createCalendarChip).join("")}
+                    <button class="calendar-add-button" data-date="${dateStr}">+ Add</button>
                 </div>
 
             </div>
@@ -840,14 +880,26 @@ function renderWeekSummary(weekWorkouts) {
 }
 
 
+function renderAllTimeSummary(workouts) {
+
+    const sumBy = (items, key) =>
+        items.reduce((total, item) => total + (item[key] || 0), 0);
+
+    const totalDistance = sumBy(workouts, "distance");
+    const totalSeconds = sumBy(workouts, "duration");
+
+    allTimeEls.distance.textContent = `${totalDistance.toFixed(1)} km`;
+    allTimeEls.time.textContent = formatHoursMinutes(totalSeconds);
+    allTimeEls.count.textContent = `${workouts.length}`;
+}
+
+
 function createCalendarChip(workout) {
 
     const icon = SPORT_ICONS[workout.sport] || "🏋️";
 
-    const meta =
-        workout.distance
-            ? `${workout.distance} km`
-            : (workout.duration ? formatDuration(workout.duration) : "");
+    const metaParts = buildMetaParts(workout);
+    const meta = metaParts.length ? metaParts[0] : "";
 
     return `
         <div class="calendar-workout-chip sport-${workout.sport}">
@@ -858,7 +910,7 @@ function createCalendarChip(workout) {
 
                 <div class="chip-text">
                     <span class="chip-title">
-                        ${capitalize(workout.workout_type)} ${capitalize(workout.sport)}
+                        ${formatWorkoutType(workout.workout_type)} ${capitalize(workout.sport)}
                     </span>
                     ${meta ? `<span class="chip-meta">${meta}</span>` : ""}
                 </div>
@@ -910,6 +962,65 @@ function renderProjections() {
 
 
 // ==================================================
+// DYNAMIC WORKOUT-TYPE + FIELD VISIBILITY
+// ==================================================
+
+function populateWorkoutTypeOptions(sport) {
+
+    const options =
+        sport === "gym" ? GYM_TYPES : ENDURANCE_TYPES;
+
+    const placeholder =
+        sport === "gym" ? "Select muscle group" : "Select type";
+
+    typeSelect.innerHTML =
+        `<option value="">${placeholder}</option>` +
+        options.map(
+            option =>
+                `<option value="${option.value}">${option.label}</option>`
+        ).join("");
+}
+
+
+function isIntervalWorkout() {
+    return (
+        sportSelect.value !== "gym" &&
+        typeSelect.value === "interval"
+    );
+}
+
+
+function usesSetsAndReps() {
+    return (
+        sportSelect.value === "gym" ||
+        isIntervalWorkout()
+    );
+}
+
+
+function updateFieldVisibility() {
+
+    const setsReps = usesSetsAndReps();
+    const interval = isIntervalWorkout();
+
+    distanceFieldGroup.classList.toggle("hidden", setsReps);
+    setsRepsFieldGroup.classList.toggle("hidden", !setsReps);
+    paceFieldGroup.classList.toggle("hidden", !interval);
+}
+
+
+sportSelect.addEventListener("change", () => {
+    populateWorkoutTypeOptions(sportSelect.value);
+    updateFieldVisibility();
+});
+
+typeSelect.addEventListener(
+    "change",
+    updateFieldVisibility
+);
+
+
+// ==================================================
 // WORKOUT MODAL
 // ==================================================
 
@@ -919,6 +1030,9 @@ function openWorkoutModal(defaultDateStr) {
 
     workoutFormError.classList.add("hidden");
     workoutFormError.textContent = "";
+
+    populateWorkoutTypeOptions("");
+    updateFieldVisibility();
 
     document.getElementById("workout-date").value =
         defaultDateStr || toDateStr(new Date());
@@ -975,23 +1089,37 @@ workoutForm.addEventListener(
 
 
         const sport =
-            document.getElementById(
-                "workout-sport"
-            ).value;
+            sportSelect.value;
 
         const workoutType =
-            document.getElementById(
-                "workout-type"
-            ).value;
+            typeSelect.value;
 
         const date =
             document.getElementById(
                 "workout-date"
             ).value;
 
+        const useSetsReps = usesSetsAndReps();
+        const interval = isIntervalWorkout();
+
         const distanceValue =
             document.getElementById(
                 "workout-distance"
+            ).value;
+
+        const setsValue =
+            document.getElementById(
+                "workout-sets"
+            ).value;
+
+        const repsValue =
+            document.getElementById(
+                "workout-reps"
+            ).value;
+
+        const paceValue =
+            document.getElementById(
+                "workout-pace"
             ).value;
 
         const durationValue =
@@ -1015,13 +1143,28 @@ workoutForm.addEventListener(
             date,
 
             distance:
-                distanceValue
+                (!useSetsReps && distanceValue)
                     ? Number(distanceValue)
                     : null,
 
             duration:
                 durationValue
                     ? Number(durationValue) * 60
+                    : null,
+
+            sets:
+                (useSetsReps && setsValue)
+                    ? Number(setsValue)
+                    : null,
+
+            reps:
+                (useSetsReps && repsValue)
+                    ? Number(repsValue)
+                    : null,
+
+            pace:
+                (interval && paceValue)
+                    ? paceValue
                     : null,
 
             notes
@@ -1183,19 +1326,7 @@ function createWorkoutHTML(workout) {
     const icon =
         SPORT_ICONS[workout.sport] || "🏋️";
 
-
-    const distance =
-        workout.distance !== null
-            ? `${workout.distance} km`
-            : "";
-
-
-    const duration =
-        workout.duration !== null
-            ? formatDuration(
-                workout.duration
-            )
-            : "";
+    const metaParts = buildMetaParts(workout);
 
 
     return `
@@ -1212,7 +1343,7 @@ function createWorkoutHTML(workout) {
                 <div>
 
                     <h3>
-                        ${capitalize(
+                        ${formatWorkoutType(
                             workout.workout_type
                         )}
                         ${capitalize(
@@ -1229,17 +1360,9 @@ function createWorkoutHTML(workout) {
 
                     <div class="workout-stats">
 
-                        ${
-                            distance
-                                ? `<span>${distance}</span>`
-                                : ""
-                        }
-
-                        ${
-                            duration
-                                ? `<span>${duration}</span>`
-                                : ""
-                        }
+                        ${metaParts.map(
+                            part => `<span>${part}</span>`
+                        ).join("")}
 
                     </div>
 
@@ -1392,6 +1515,54 @@ function formatDate(dateString) {
         }
     );
 
+}
+
+
+function buildMetaParts(workout) {
+
+    const parts = [];
+
+    if (workout.distance) {
+        parts.push(`${workout.distance} km`);
+    }
+
+    if (workout.sets || workout.reps) {
+
+        const setsLabel =
+            workout.sets ? `${workout.sets} sets` : "";
+
+        const repsLabel =
+            workout.reps ? `${workout.reps} reps` : "";
+
+        parts.push(
+            [setsLabel, repsLabel]
+                .filter(Boolean)
+                .join(" \u00d7 ")
+        );
+    }
+
+    if (workout.pace) {
+        parts.push(`Pace ${workout.pace}`);
+    }
+
+    if (workout.duration) {
+        parts.push(formatDuration(workout.duration));
+    }
+
+    return parts;
+}
+
+
+function formatWorkoutType(type) {
+
+    if (!type) {
+        return "";
+    }
+
+    return type
+        .split("_")
+        .map(capitalize)
+        .join(" ");
 }
 
 
