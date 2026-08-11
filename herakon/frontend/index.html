@@ -185,6 +185,8 @@
                     <p class="loading">Loading workouts...</p>
                 </div>
 
+                <div id="today-planned-content"></div>
+
             </section>
 
 
@@ -196,8 +198,44 @@
 
                     <div>
                         <h1>Calendar</h1>
-                        <p class="page-subtitle">Completed training, week by week</p>
+                        <p class="page-subtitle">Completed and planned training, week by week</p>
                     </div>
+
+                </div>
+
+                <div class="planner-panel" id="planner-panel">
+
+                    <div class="planner-panel-info">
+
+                        <span class="planner-phase-label" id="planner-phase-label">
+                            Loading training phase...
+                        </span>
+
+                        <p class="planner-phase-description" id="planner-phase-description"></p>
+
+                    </div>
+
+                    <div class="planner-panel-controls">
+
+                        <select id="planner-phase-override">
+                            <option value="">Auto phase</option>
+                            <option value="recovery">Force: Recovery</option>
+                            <option value="base">Force: Base</option>
+                            <option value="build">Force: Build</option>
+                            <option value="peak">Force: Peak</option>
+                        </select>
+
+                        <button id="generate-next-week-button" class="secondary-button">
+                            Generate next week
+                        </button>
+
+                        <button id="replan-week-button" class="secondary-button">
+                            Replan remaining week
+                        </button>
+
+                    </div>
+
+                    <p id="planner-panel-message" class="planner-panel-message hidden"></p>
 
                 </div>
 
@@ -326,7 +364,7 @@
 
             <div class="modal-header">
 
-                <h3>Add workout</h3>
+                <h3 id="workout-modal-title">Add workout</h3>
 
                 <button id="close-workout-modal" class="icon-button" aria-label="Close">
                     &times;
@@ -440,19 +478,41 @@
                 </div>
 
 
-                <label id="pace-field-group" class="hidden">
-                    Pace
+                <div id="structured-sets-field-group" class="hidden">
 
-                    <input
-                        id="workout-pace"
-                        type="text"
-                        placeholder="e.g. 1:45 /100m or 4:30 /km"
+                    <div id="structured-sets-list"></div>
+
+                    <button
+                        type="button"
+                        id="add-structured-set-button"
+                        class="text-button add-set-button"
                     >
+                        + Add Set
+                    </button>
 
-                </label>
+                    <div class="structured-sets-summary" id="structured-sets-summary">
+                        <div>
+                            <span>Total distance</span>
+                            <strong id="structured-summary-distance">—</strong>
+                        </div>
+                        <div>
+                            <span>Work time</span>
+                            <strong id="structured-summary-work">—</strong>
+                        </div>
+                        <div>
+                            <span>Rest time</span>
+                            <strong id="structured-summary-rest">—</strong>
+                        </div>
+                        <div>
+                            <span>Total time</span>
+                            <strong id="structured-summary-total">—</strong>
+                        </div>
+                    </div>
+
+                </div>
 
 
-                <label>
+                <label id="duration-field-group">
                     Duration (minutes)
 
                     <input
@@ -482,7 +542,7 @@
 
                 <div class="form-buttons">
 
-                    <button type="submit">
+                    <button type="submit" id="workout-form-submit">
                         Save workout
                     </button>
 

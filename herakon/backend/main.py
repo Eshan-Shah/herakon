@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from datetime import date
 import secrets
 import json
 import os
@@ -10,6 +11,8 @@ from auth import (
     find_user_by_email,
     verify_password
 )
+
+import planner
 
 app = FastAPI(title="Herakon API")
 
@@ -201,12 +204,30 @@ class WorkoutRequest(BaseModel):
     sport: str
     workout_type: str
     date: str
+    status: str = "completed"          # "completed" | "planned"
+    distance: float | None = None      # km — continuous sessions, or auto-total for structured ones
+    duration: int | None = None        # seconds — continuous/gym sessions, or auto-total
+    sets: int | None = None            # gym only: number of sets
+    reps: int | None = None            # gym only: reps per set
+    structured_sets: list[dict] | None = None   # swim/bike/run interval builder rows
+    plan_week_start: str | None = None  # Monday date string — tags which planned week this belongs to
+    linked_id: str | None = None        # pairs a brick bike+run session together
+    notes: str = ""
+
+
+class WorkoutUpdateRequest(BaseModel):
+    sport: str | None = None
+    workout_type: str | None = None
+    date: str | None = None
+    status: str | None = None
     distance: float | None = None
     duration: int | None = None
     sets: int | None = None
     reps: int | None = None
-    pace: str | None = None
-    notes: str = ""
+    structured_sets: list[dict] | None = None
+    plan_week_start: str | None = None
+    linked_id: str | None = None
+    notes: str | None = None
 
 
 WORKOUTS_FILE = os.path.join(
@@ -280,11 +301,14 @@ def add_workout(
         "sport": workout.sport,
         "workout_type": workout.workout_type,
         "date": workout.date,
+        "status": workout.status,
         "distance": workout.distance,
         "duration": workout.duration,
         "sets": workout.sets,
         "reps": workout.reps,
-        "pace": workout.pace,
+        "structured_sets": workout.structured_sets,
+        "plan_week_start": workout.plan_week_start,
+        "linked_id": workout.linked_id,
         "notes": workout.notes
     }
 
@@ -355,3 +379,161 @@ def delete_workout(
     return {
         "message": "Workout deleted successfully."
     }
+
+
+@app.patch("/workouts/{workout_id}")
+def update_workout(
+    workout_id: str,
+    updates: WorkoutUpdateRequest,
+    authorization: str | None = Header(default=None)
+):
+
+    user_id = get_authenticated_user(
+        authorization
+    )
+
+    workouts = load_workouts()
+
+    workout = next(
+        (
+            workout
+            for workout in workouts
+            if workout["id"] == workout_id
+            and workout["user_id"] == user_id
+        ),
+        None
+    )
+
+    if not workout:
+        raise HTTPException(
+            status_code=404,
+            detail="Workout not found."
+        )
+
+    update_data = updates.dict(exclude_unset=True)
+
+    for key, value in update_data.items():
+        workout[key] = value
+
+    save_workouts(workouts)
+
+    return workout
+
+
+# ==================================================
+# TRAINING PLANNER
+# ==================================================
+#
+# All of the actual planning logic lives in planner.py, kept
+# separate from the API layer on purpose so it stays easy to
+# read, test, and rewrite independently of the routes below.
+
+class PlanRequest(BaseModel):
+    phase_override: str | None = None
+
+
+@app.get("/planner/status")
+def planner_status(
+    authorization: str | None = Header(default=None)
+):
+
+    user_id = get_authenticated_user(
+        authorization
+    )
+
+    workouts = load_workouts()
+
+    user_workouts = [
+        w for w in workouts if w["user_id"] == user_id
+    ]
+
+    return planner.get_status(
+        user_workouts,
+        date.today()
+    )
+
+
+@app.post("/planner/generate-next-week")
+def planner_generate_next_week(
+    request: PlanRequest = PlanRequest(),
+    authorization: str | None = Header(default=None)
+):
+
+    user_id = get_authenticated_user(
+        authorization
+    )
+
+    workouts = load_workouts()
+
+    user_workouts = [
+        w for w in workouts if w["user_id"] == user_id
+    ]
+
+    result = planner.plan_next_week(
+        user_id,
+        user_workouts,
+        date.today(),
+        phase_override=request.phase_override
+    )
+
+    # Replace any previously generated planned workouts for this
+    # exact week, then save the fresh plan.
+    workouts = [
+        w for w in workouts
+        if not (
+            w["user_id"] == user_id
+            and w.get("status") == "planned"
+            and w.get("plan_week_start") == result["week_start"]
+        )
+    ]
+
+    workouts.extend(result["workouts"])
+
+    save_workouts(workouts)
+
+    return result
+
+
+@app.post("/planner/replan-remaining-week")
+def planner_replan_remaining_week(
+    request: PlanRequest = PlanRequest(),
+    authorization: str | None = Header(default=None)
+):
+
+    user_id = get_authenticated_user(
+        authorization
+    )
+
+    workouts = load_workouts()
+
+    user_workouts = [
+        w for w in workouts if w["user_id"] == user_id
+    ]
+
+    result = planner.replan_remaining_week(
+        user_id,
+        user_workouts,
+        date.today(),
+        phase_override=request.phase_override
+    )
+
+    today_str = date.today().isoformat()
+
+    # Only clear this user's planned (not completed) workouts from
+    # today onward within the current week — past/completed entries
+    # are never touched.
+    workouts = [
+        w for w in workouts
+        if not (
+            w["user_id"] == user_id
+            and w.get("status") == "planned"
+            and w.get("plan_week_start") == result["week_start"]
+            and w["date"] >= today_str
+        )
+    ]
+
+    workouts.extend(result["workouts"])
+
+    save_workouts(workouts)
+
+    return result

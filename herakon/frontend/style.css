@@ -529,6 +529,111 @@ button:hover {
 }
 
 
+/* ==================== PLANNER PANEL ==================== */
+
+.planner-panel {
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 14px;
+
+    padding: 18px 20px;
+
+    margin-bottom: 24px;
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 14px;
+}
+
+.planner-panel-info {
+    min-width: 220px;
+}
+
+.planner-phase-label {
+    display: inline-block;
+
+    font-weight: 700;
+
+    font-size: 13px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+    color: var(--accent-dark);
+
+    background: #eaf0ff;
+
+    padding: 4px 10px;
+
+    border-radius: 999px;
+}
+
+.planner-phase-description {
+    margin: 8px 0 0 0;
+
+    color: var(--muted);
+
+    font-size: 14px;
+}
+
+.planner-panel-controls {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap: 10px;
+}
+
+.planner-panel-controls select {
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 9px;
+
+    font: inherit;
+
+    font-size: 13px;
+
+    background: white;
+
+    color: var(--text);
+}
+
+.planner-panel-controls button {
+    font-size: 13px;
+
+    padding: 9px 14px;
+}
+
+.planner-panel-message {
+    width: 100%;
+
+    margin: 0;
+
+    padding: 10px 12px;
+
+    border-radius: 8px;
+
+    background: #eaf6ea;
+
+    color: #1a6b2c;
+
+    font-size: 13px;
+}
+
+
 /* ==================== SUMMARY BLOCKS ==================== */
 
 .summary-block {
@@ -766,6 +871,85 @@ button:hover {
 .calendar-workout-chip.sport-bike { border-left-color: var(--bike); }
 .calendar-workout-chip.sport-run { border-left-color: var(--run); }
 .calendar-workout-chip.sport-gym { border-left-color: var(--gym); }
+
+.calendar-workout-chip.status-planned {
+    background: transparent;
+
+    border-style: dashed;
+
+    border-left-style: solid;
+
+    opacity: 0.85;
+}
+
+.chip-status-tag {
+    font-size: 10px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.4px;
+
+    color: var(--muted);
+}
+
+.chip-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: 2px;
+
+    flex-shrink: 0;
+}
+
+.complete-workout {
+    background: none;
+
+    border: none;
+
+    color: var(--run);
+
+    font-size: 15px;
+
+    padding: 2px 6px;
+
+    line-height: 1;
+}
+
+.complete-workout:hover {
+    background: none;
+
+    opacity: 0.7;
+}
+
+
+/* ==================== PLANNED TODAY ==================== */
+
+.planned-today-block {
+    margin-top: 26px;
+}
+
+.planned-today-block h3 {
+    font-size: 13px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+    color: var(--muted);
+
+    margin: 0 0 12px 0;
+}
+
+.workout-card.status-planned {
+    border-style: dashed;
+
+    background: var(--background);
+}
 
 .chip-main {
     display: flex;
@@ -1040,6 +1224,143 @@ button:hover {
 
 .sets-reps-row label {
     flex: 1;
+}
+
+
+/* ==================== STRUCTURED SET BUILDER ==================== */
+
+.structured-set-row {
+    background: var(--background);
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    padding: 14px;
+
+    margin-bottom: 10px;
+}
+
+.structured-set-row-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 10px;
+}
+
+.structured-set-row-header span {
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+    color: var(--muted);
+}
+
+.remove-set-button {
+    background: none;
+
+    color: var(--muted);
+
+    border: none;
+
+    font-size: 18px;
+
+    line-height: 1;
+
+    padding: 2px 6px;
+}
+
+.remove-set-button:hover {
+    color: #b00000;
+
+    opacity: 1;
+}
+
+.structured-set-grid {
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 10px;
+}
+
+.structured-set-grid label {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 5px;
+
+    font-size: 12px;
+
+    color: var(--muted);
+}
+
+.structured-set-grid input {
+    padding: 10px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    font: inherit;
+
+    font-size: 14px;
+}
+
+.add-set-button {
+    display: block;
+
+    margin: 4px 0 16px 0;
+
+    font-size: 14px;
+}
+
+.structured-sets-summary {
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 10px;
+
+    background: #eaf0ff;
+
+    border-radius: 10px;
+
+    padding: 14px;
+
+    margin-bottom: 4px;
+}
+
+.structured-sets-summary div {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+}
+
+.structured-sets-summary span {
+    font-size: 11px;
+
+    color: var(--muted);
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.4px;
+}
+
+.structured-sets-summary strong {
+    font-size: 15px;
+
+    color: var(--accent-dark);
 }
 
 

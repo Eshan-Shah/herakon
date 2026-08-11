@@ -159,8 +159,61 @@ const distanceFieldGroup =
 const setsRepsFieldGroup =
     document.getElementById("sets-reps-field-group");
 
-const paceFieldGroup =
-    document.getElementById("pace-field-group");
+const durationFieldGroup =
+    document.getElementById("duration-field-group");
+
+const structuredSetsFieldGroup =
+    document.getElementById("structured-sets-field-group");
+
+const structuredSetsList =
+    document.getElementById("structured-sets-list");
+
+const addStructuredSetButton =
+    document.getElementById("add-structured-set-button");
+
+const structuredSummaryEls = {
+    distance: document.getElementById("structured-summary-distance"),
+    work: document.getElementById("structured-summary-work"),
+    rest: document.getElementById("structured-summary-rest"),
+    total: document.getElementById("structured-summary-total")
+};
+
+const workoutModalTitle =
+    document.getElementById("workout-modal-title");
+
+const workoutFormSubmitButton =
+    document.getElementById("workout-form-submit");
+
+
+// ==================================================
+// ELEMENTS — PLANNER PANEL
+// ==================================================
+
+const plannerPhaseLabel =
+    document.getElementById("planner-phase-label");
+
+const plannerPhaseDescription =
+    document.getElementById("planner-phase-description");
+
+const plannerPhaseOverride =
+    document.getElementById("planner-phase-override");
+
+const generateNextWeekButton =
+    document.getElementById("generate-next-week-button");
+
+const replanWeekButton =
+    document.getElementById("replan-week-button");
+
+const plannerPanelMessage =
+    document.getElementById("planner-panel-message");
+
+
+// ==================================================
+// ELEMENTS — TODAY PLANNED SECTION
+// ==================================================
+
+const todayPlannedContent =
+    document.getElementById("today-planned-content");
 
 
 // ==================================================
@@ -171,6 +224,9 @@ let allWorkouts = null;
 let loadError = null;
 let currentPage = "today";
 let weekStart = getMonday(new Date());
+let editingWorkoutId = null;   // set when completing a planned workout
+let structuredSets = [];       // rows in the current structured-set builder
+let structuredSetIdCounter = 0;
 
 
 // ==================================================
@@ -702,13 +758,17 @@ function renderToday() {
                 ? `<p class="error">${loadError}</p>`
                 : `<p class="loading">Loading workouts...</p>`;
 
+        todayPlannedContent.innerHTML = "";
+
         return;
     }
 
     const todayStr = toDateStr(new Date());
 
     const todaysWorkouts = allWorkouts.filter(
-        workout => workout.date === todayStr
+        workout =>
+            workout.date === todayStr &&
+            (workout.status || "completed") === "completed"
     );
 
     if (todaysWorkouts.length === 0) {
@@ -736,16 +796,46 @@ function renderToday() {
                 () => openWorkoutModal(todayStr)
             );
 
+    } else {
+
+        todayContent.innerHTML = `
+            <div class="workout-list">
+                ${todaysWorkouts.map(workout => createWorkoutHTML(workout)).join("")}
+            </div>
+        `;
+
+        attachDeleteHandlers(todayContent);
+
+    }
+
+    renderPlannedToday(todayStr);
+}
+
+
+function renderPlannedToday(todayStr) {
+
+    const plannedToday = allWorkouts.filter(
+        workout =>
+            workout.date === todayStr &&
+            workout.status === "planned"
+    );
+
+    if (plannedToday.length === 0) {
+        todayPlannedContent.innerHTML = "";
         return;
     }
 
-    todayContent.innerHTML = `
-        <div class="workout-list">
-            ${todaysWorkouts.map(createWorkoutHTML).join("")}
+    todayPlannedContent.innerHTML = `
+        <div class="planned-today-block">
+            <h3>Planned for today</h3>
+            <div class="workout-list">
+                ${plannedToday.map(workout => createWorkoutHTML(workout)).join("")}
+            </div>
         </div>
     `;
 
-    attachDeleteHandlers(todayContent);
+    attachDeleteHandlers(todayPlannedContent);
+    attachCompleteHandlers(todayPlannedContent);
 }
 
 
@@ -803,8 +893,17 @@ function renderCalendar() {
             workout.date <= weekEndStr
     );
 
-    renderWeekSummary(weekWorkouts);
-    renderAllTimeSummary(allWorkouts);
+    const completedWeekWorkouts = weekWorkouts.filter(
+        workout => (workout.status || "completed") === "completed"
+    );
+
+    const completedAllWorkouts = allWorkouts.filter(
+        workout => (workout.status || "completed") === "completed"
+    );
+
+    renderWeekSummary(completedWeekWorkouts);
+    renderAllTimeSummary(completedAllWorkouts);
+    loadPlannerStatus();
 
     const todayStr = toDateStr(new Date());
 
@@ -850,6 +949,7 @@ function renderCalendar() {
         });
 
     attachDeleteHandlers(calendarGrid);
+    attachCompleteHandlers(calendarGrid);
 }
 
 
@@ -894,6 +994,145 @@ function renderAllTimeSummary(workouts) {
 }
 
 
+// ==================================================
+// PLANNER PANEL
+// ==================================================
+
+const PHASE_LABELS = {
+    recovery: "Recovery",
+    base: "Base",
+    build: "Build",
+    peak: "Peak"
+};
+
+const PHASE_DESCRIPTIONS = {
+    recovery: "Lighter week — reducing volume and fatigue.",
+    base: "Building aerobic volume with steady, easy training.",
+    build: "Increasing training load and introducing more quality sessions.",
+    peak: "Race-specific work — manually selected, not auto-detected."
+};
+
+let plannerStatusLoaded = false;
+
+async function loadPlannerStatus() {
+
+    const token =
+        localStorage.getItem("herakon_token");
+
+    if (!token) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/planner/status`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Failed to load training phase.");
+        }
+
+        plannerPhaseLabel.textContent = PHASE_LABELS[data.phase] || data.phase;
+        plannerPhaseDescription.textContent = PHASE_DESCRIPTIONS[data.phase] || "";
+
+        plannerStatusLoaded = true;
+
+    } catch (error) {
+
+        if (!plannerStatusLoaded) {
+            plannerPhaseLabel.textContent = "Phase unavailable";
+            plannerPhaseDescription.textContent = error.message;
+        }
+
+    }
+
+}
+
+
+function showPlannerMessage(message) {
+
+    plannerPanelMessage.textContent = message;
+    plannerPanelMessage.classList.remove("hidden");
+}
+
+
+function hidePlannerMessage() {
+
+    plannerPanelMessage.classList.add("hidden");
+    plannerPanelMessage.textContent = "";
+}
+
+
+async function runPlannerAction(url, successMessageFn) {
+
+    const token =
+        localStorage.getItem("herakon_token");
+
+    hidePlannerMessage();
+
+    generateNextWeekButton.disabled = true;
+    replanWeekButton.disabled = true;
+
+    const phaseOverride = plannerPhaseOverride.value || null;
+
+    try {
+
+        const response = await fetch(
+            url,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ phase_override: phaseOverride })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Failed to update the plan.");
+        }
+
+        showPlannerMessage(successMessageFn(data));
+
+        await loadWorkouts();
+        await loadPlannerStatus();
+
+    } catch (error) {
+
+        showPlannerMessage(error.message);
+
+    } finally {
+
+        generateNextWeekButton.disabled = false;
+        replanWeekButton.disabled = false;
+
+    }
+
+}
+
+
+generateNextWeekButton.addEventListener("click", () => {
+    runPlannerAction(
+        `${API_URL}/planner/generate-next-week`,
+        data => `Generated a ${PHASE_LABELS[data.phase] || data.phase} week for ${formatShort(new Date(`${data.week_start}T00:00:00`))} – ${formatShort(new Date(`${data.week_end}T00:00:00`))} (${data.workouts.length} sessions).`
+    );
+});
+
+replanWeekButton.addEventListener("click", () => {
+    runPlannerAction(
+        `${API_URL}/planner/replan-remaining-week`,
+        data => `Replanned the rest of this week (${data.workouts.length} remaining sessions).`
+    );
+});
+
+
 function createCalendarChip(workout) {
 
     const icon = SPORT_ICONS[workout.sport] || "🏋️";
@@ -901,8 +1140,10 @@ function createCalendarChip(workout) {
     const metaParts = buildMetaParts(workout);
     const meta = metaParts.length ? metaParts[0] : "";
 
+    const isPlanned = workout.status === "planned";
+
     return `
-        <div class="calendar-workout-chip sport-${workout.sport}">
+        <div class="calendar-workout-chip sport-${workout.sport} ${isPlanned ? "status-planned" : ""}">
 
             <div class="chip-main">
 
@@ -913,13 +1154,28 @@ function createCalendarChip(workout) {
                         ${formatWorkoutType(workout.workout_type)} ${capitalize(workout.sport)}
                     </span>
                     ${meta ? `<span class="chip-meta">${meta}</span>` : ""}
+                    ${isPlanned ? `<span class="chip-status-tag">Planned</span>` : ""}
                 </div>
 
             </div>
 
-            <button class="delete-workout" data-id="${workout.id}" title="Delete workout">
-                &times;
-            </button>
+            <div class="chip-actions">
+
+                ${
+                    isPlanned
+                        ? `
+                            <button class="complete-workout" data-id="${workout.id}" title="Mark as completed">
+                                &check;
+                            </button>
+                        `
+                        : ""
+                }
+
+                <button class="delete-workout" data-id="${workout.id}" title="Delete workout">
+                    &times;
+                </button>
+
+            </div>
 
         </div>
     `;
@@ -990,22 +1246,24 @@ function isIntervalWorkout() {
 }
 
 
-function usesSetsAndReps() {
-    return (
-        sportSelect.value === "gym" ||
-        isIntervalWorkout()
-    );
+function isGymWorkout() {
+    return sportSelect.value === "gym";
 }
 
 
 function updateFieldVisibility() {
 
-    const setsReps = usesSetsAndReps();
+    const gym = isGymWorkout();
     const interval = isIntervalWorkout();
 
-    distanceFieldGroup.classList.toggle("hidden", setsReps);
-    setsRepsFieldGroup.classList.toggle("hidden", !setsReps);
-    paceFieldGroup.classList.toggle("hidden", !interval);
+    distanceFieldGroup.classList.toggle("hidden", gym || interval);
+    setsRepsFieldGroup.classList.toggle("hidden", !gym);
+    structuredSetsFieldGroup.classList.toggle("hidden", !interval);
+    durationFieldGroup.classList.toggle("hidden", interval);
+
+    if (interval && structuredSets.length === 0) {
+        addStructuredSetRow();
+    }
 }
 
 
@@ -1021,15 +1279,256 @@ typeSelect.addEventListener(
 
 
 // ==================================================
+// STRUCTURED SET BUILDER
+// ==================================================
+//
+// Each row: { id, distance (km), duration (minutes per rep),
+//             pace (free text), reps, restSeconds }
+//
+// Pace time estimation only understands common "M:SS/unit" formats
+// (e.g. "4:25/km", "2:00/100m"). Anything else is just a label — no
+// time is guessed from it. See planner.py's module docstring for the
+// same principle applied on the backend planning side.
+
+function addStructuredSetRow() {
+
+    structuredSetIdCounter += 1;
+
+    structuredSets.push({
+        id: structuredSetIdCounter,
+        distance: "",
+        duration: "",
+        pace: "",
+        reps: "1",
+        restSeconds: ""
+    });
+
+    renderStructuredSetsList();
+}
+
+
+function removeStructuredSetRow(id) {
+
+    structuredSets = structuredSets.filter(set => set.id !== id);
+
+    if (structuredSets.length === 0) {
+        addStructuredSetRow();
+        return;
+    }
+
+    renderStructuredSetsList();
+}
+
+
+function updateStructuredSetField(id, field, value) {
+
+    const set = structuredSets.find(s => s.id === id);
+
+    if (set) {
+        set[field] = value;
+    }
+
+    updateStructuredSetsSummary();
+}
+
+
+function renderStructuredSetsList() {
+
+    structuredSetsList.innerHTML = structuredSets.map((set, index) => `
+        <div class="structured-set-row" data-set-id="${set.id}">
+
+            <div class="structured-set-row-header">
+                <span>Set ${index + 1}</span>
+                <button type="button" class="remove-set-button" data-remove-id="${set.id}">
+                    &times;
+                </button>
+            </div>
+
+            <div class="structured-set-grid">
+
+                <label>
+                    Distance (km)
+                    <input type="number" step="0.01" min="0" placeholder="e.g. 1.0"
+                        data-set-id="${set.id}" data-field="distance" value="${set.distance}">
+                </label>
+
+                <label>
+                    Duration per rep (min)
+                    <input type="number" step="0.1" min="0" placeholder="e.g. 5"
+                        data-set-id="${set.id}" data-field="duration" value="${set.duration}">
+                </label>
+
+                <label>
+                    Pace / intensity
+                    <input type="text" placeholder="e.g. 4:25/km"
+                        data-set-id="${set.id}" data-field="pace" value="${set.pace}">
+                </label>
+
+                <label>
+                    Reps
+                    <input type="number" step="1" min="1" placeholder="e.g. 4"
+                        data-set-id="${set.id}" data-field="reps" value="${set.reps}">
+                </label>
+
+                <label>
+                    Rest between reps (sec)
+                    <input type="number" step="1" min="0" placeholder="e.g. 90"
+                        data-set-id="${set.id}" data-field="restSeconds" value="${set.restSeconds}">
+                </label>
+
+            </div>
+
+        </div>
+    `).join("");
+
+    structuredSetsList
+        .querySelectorAll("input")
+        .forEach(input => {
+            input.addEventListener("input", () => {
+                updateStructuredSetField(
+                    Number(input.dataset.setId),
+                    input.dataset.field,
+                    input.value
+                );
+            });
+        });
+
+    structuredSetsList
+        .querySelectorAll(".remove-set-button")
+        .forEach(button => {
+            button.addEventListener("click", () => {
+                removeStructuredSetRow(Number(button.dataset.removeId));
+            });
+        });
+
+    updateStructuredSetsSummary();
+}
+
+
+addStructuredSetButton.addEventListener(
+    "click",
+    addStructuredSetRow
+);
+
+
+// Parses "M:SS/unit" pace strings into seconds-per-km. Returns null
+// for anything else (e.g. "threshold", "zone 2") rather than
+// guessing — see module note above.
+function parsePaceSecondsPerKm(pace) {
+
+    if (!pace) {
+        return null;
+    }
+
+    const match = pace.trim().match(
+        /^(\d{1,2}):(\d{2})\s*\/\s*(km|mi|100m|50m|25m|500m)?$/i
+    );
+
+    if (!match) {
+        return null;
+    }
+
+    const minutes = Number(match[1]);
+    const seconds = Number(match[2]);
+    const unit = (match[3] || "km").toLowerCase();
+
+    const paceSeconds = minutes * 60 + seconds;
+
+    const unitKm = {
+        "km": 1,
+        "mi": 1.60934,
+        "100m": 0.1,
+        "50m": 0.05,
+        "25m": 0.025,
+        "500m": 0.5
+    }[unit];
+
+    return paceSeconds / unitKm;
+}
+
+
+// Computes { distanceKm, workSeconds, restSeconds } for one set row.
+function computeSetTotals(set) {
+
+    const distancePerRep = Number(set.distance) || 0;
+    const manualDurationPerRep = Number(set.duration) || 0;
+    const reps = Math.max(Number(set.reps) || 1, 1);
+    const restPerGap = Number(set.restSeconds) || 0;
+
+    let perRepSeconds = 0;
+
+    if (manualDurationPerRep > 0) {
+        perRepSeconds = manualDurationPerRep * 60;
+    } else if (distancePerRep > 0) {
+        const secondsPerKm = parsePaceSecondsPerKm(set.pace);
+        if (secondsPerKm !== null) {
+            perRepSeconds = secondsPerKm * distancePerRep;
+        }
+    }
+
+    const setDistance = distancePerRep * reps;
+    const setWorkSeconds = perRepSeconds * reps;
+    const setRestSeconds = restPerGap * Math.max(reps - 1, 0);
+
+    return {
+        distanceKm: setDistance,
+        workSeconds: setWorkSeconds,
+        restSeconds: setRestSeconds
+    };
+}
+
+
+function computeStructuredSetsTotals() {
+
+    return structuredSets.reduce((totals, set) => {
+        const setTotals = computeSetTotals(set);
+        return {
+            distanceKm: totals.distanceKm + setTotals.distanceKm,
+            workSeconds: totals.workSeconds + setTotals.workSeconds,
+            restSeconds: totals.restSeconds + setTotals.restSeconds
+        };
+    }, { distanceKm: 0, workSeconds: 0, restSeconds: 0 });
+}
+
+
+function updateStructuredSetsSummary() {
+
+    const totals = computeStructuredSetsTotals();
+
+    structuredSummaryEls.distance.textContent =
+        totals.distanceKm > 0 ? `${totals.distanceKm.toFixed(2)} km` : "—";
+
+    structuredSummaryEls.work.textContent =
+        totals.workSeconds > 0 ? formatHoursMinutes(totals.workSeconds) : "—";
+
+    structuredSummaryEls.rest.textContent =
+        totals.restSeconds > 0 ? formatHoursMinutes(totals.restSeconds) : "—";
+
+    const totalSeconds = totals.workSeconds + totals.restSeconds;
+
+    structuredSummaryEls.total.textContent =
+        totalSeconds > 0 ? formatHoursMinutes(totalSeconds) : "—";
+}
+
+
+// ==================================================
 // WORKOUT MODAL
 // ==================================================
 
 function openWorkoutModal(defaultDateStr) {
 
+    editingWorkoutId = null;
+
     workoutForm.reset();
 
     workoutFormError.classList.add("hidden");
     workoutFormError.textContent = "";
+
+    workoutModalTitle.textContent = "Add workout";
+    workoutFormSubmitButton.textContent = "Save workout";
+
+    structuredSets = [];
+    structuredSetIdCounter = 0;
 
     populateWorkoutTypeOptions("");
     updateFieldVisibility();
@@ -1041,7 +1540,56 @@ function openWorkoutModal(defaultDateStr) {
 }
 
 
+// Opens the modal pre-filled with a planned workout's values, so the
+// person can adjust them to what actually happened and mark it done.
+function openCompleteWorkoutModal(workout) {
+
+    editingWorkoutId = workout.id;
+
+    workoutForm.reset();
+
+    workoutFormError.classList.add("hidden");
+    workoutFormError.textContent = "";
+
+    workoutModalTitle.textContent = "Complete workout";
+    workoutFormSubmitButton.textContent = "Mark as completed";
+
+    structuredSets = [];
+    structuredSetIdCounter = 0;
+
+    sportSelect.value = workout.sport;
+    populateWorkoutTypeOptions(workout.sport);
+    typeSelect.value = workout.workout_type;
+
+    document.getElementById("workout-date").value = workout.date;
+    document.getElementById("workout-distance").value = workout.distance ?? "";
+    document.getElementById("workout-duration").value =
+        workout.duration ? Math.round(workout.duration / 60) : "";
+    document.getElementById("workout-sets").value = workout.sets ?? "";
+    document.getElementById("workout-reps").value = workout.reps ?? "";
+
+    const isPlannedInterval =
+        workout.sport !== "gym" &&
+        workout.workout_type === "interval" &&
+        !workout.structured_sets;
+
+    const plannedTargetHint =
+        isPlannedInterval && (workout.distance || workout.duration)
+            ? `Planned target: ${workout.distance ? `${workout.distance} km` : ""}${workout.distance && workout.duration ? " / " : ""}${workout.duration ? formatDuration(workout.duration) : ""}. Enter what you actually did below.`
+            : "";
+
+    document.getElementById("workout-notes").value =
+        [plannedTargetHint, workout.notes || ""].filter(Boolean).join(" ");
+
+    updateFieldVisibility();
+
+    workoutModalOverlay.classList.remove("hidden");
+}
+
+
 function closeWorkoutModal() {
+
+    editingWorkoutId = null;
 
     workoutForm.reset();
 
@@ -1072,7 +1620,7 @@ workoutModalOverlay.addEventListener(
 
 
 // ==================================================
-// ADD WORKOUT
+// SAVE WORKOUT (add new, or complete a planned one)
 // ==================================================
 
 workoutForm.addEventListener(
@@ -1099,7 +1647,7 @@ workoutForm.addEventListener(
                 "workout-date"
             ).value;
 
-        const useSetsReps = usesSetsAndReps();
+        const gym = isGymWorkout();
         const interval = isIntervalWorkout();
 
         const distanceValue =
@@ -1117,11 +1665,6 @@ workoutForm.addEventListener(
                 "workout-reps"
             ).value;
 
-        const paceValue =
-            document.getElementById(
-                "workout-pace"
-            ).value;
-
         const durationValue =
             document.getElementById(
                 "workout-duration"
@@ -1133,52 +1676,73 @@ workoutForm.addEventListener(
             ).value;
 
 
+        let distance = null;
+        let duration = null;
+        let sets = null;
+        let reps = null;
+        let structuredSetsPayload = null;
+
+        if (gym) {
+
+            sets = setsValue ? Number(setsValue) : null;
+            reps = repsValue ? Number(repsValue) : null;
+            duration = durationValue ? Number(durationValue) * 60 : null;
+
+        } else if (interval) {
+
+            const totals = computeStructuredSetsTotals();
+
+            distance = totals.distanceKm > 0 ? Number(totals.distanceKm.toFixed(2)) : null;
+            duration = (totals.workSeconds + totals.restSeconds) > 0
+                ? Math.round(totals.workSeconds + totals.restSeconds)
+                : null;
+
+            structuredSetsPayload = structuredSets.map(set => ({
+                distance: set.distance ? Number(set.distance) : null,
+                duration: set.duration ? Number(set.duration) * 60 : null,
+                pace: set.pace || null,
+                reps: set.reps ? Number(set.reps) : 1,
+                rest_seconds: set.restSeconds ? Number(set.restSeconds) : null
+            }));
+
+        } else {
+
+            distance = distanceValue ? Number(distanceValue) : null;
+            duration = durationValue ? Number(durationValue) * 60 : null;
+
+        }
+
+
         const workout = {
-
             sport,
-
-            workout_type:
-                workoutType,
-
+            workout_type: workoutType,
             date,
-
-            distance:
-                (!useSetsReps && distanceValue)
-                    ? Number(distanceValue)
-                    : null,
-
-            duration:
-                durationValue
-                    ? Number(durationValue) * 60
-                    : null,
-
-            sets:
-                (useSetsReps && setsValue)
-                    ? Number(setsValue)
-                    : null,
-
-            reps:
-                (useSetsReps && repsValue)
-                    ? Number(repsValue)
-                    : null,
-
-            pace:
-                (interval && paceValue)
-                    ? paceValue
-                    : null,
-
+            distance,
+            duration,
+            sets,
+            reps,
+            structured_sets: structuredSetsPayload,
             notes
-
         };
+
+        if (editingWorkoutId) {
+            workout.status = "completed";
+        }
 
 
         try {
 
+            const url = editingWorkoutId
+                ? `${API_URL}/workouts/${editingWorkoutId}`
+                : `${API_URL}/workouts`;
+
+            const method = editingWorkoutId ? "PATCH" : "POST";
+
             const response = await fetch(
-                `${API_URL}/workouts`,
+                url,
                 {
 
-                    method: "POST",
+                    method,
 
                     headers: {
 
@@ -1205,7 +1769,7 @@ workoutForm.addEventListener(
 
                 throw new Error(
                     data.detail ||
-                    "Failed to add workout."
+                    "Failed to save workout."
                 );
 
             }
@@ -1242,6 +1806,32 @@ function attachDeleteHandlers(container) {
                 (event) => {
                     event.stopPropagation();
                     deleteWorkout(button.dataset.id);
+                }
+            );
+
+        });
+
+}
+
+
+function attachCompleteHandlers(container) {
+
+    container
+        .querySelectorAll(".complete-workout")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                (event) => {
+                    event.stopPropagation();
+
+                    const workout = allWorkouts.find(
+                        w => w.id === button.dataset.id
+                    );
+
+                    if (workout) {
+                        openCompleteWorkoutModal(workout);
+                    }
                 }
             );
 
@@ -1328,10 +1918,12 @@ function createWorkoutHTML(workout) {
 
     const metaParts = buildMetaParts(workout);
 
+    const isPlanned = workout.status === "planned";
+
 
     return `
 
-        <div class="workout-card">
+        <div class="workout-card ${isPlanned ? "status-planned" : ""}">
 
             <div class="workout-main">
 
@@ -1349,6 +1941,7 @@ function createWorkoutHTML(workout) {
                         ${capitalize(
                             workout.sport
                         )}
+                        ${isPlanned ? `<span class="chip-status-tag">Planned</span>` : ""}
                     </h3>
 
                     <p class="workout-date">
@@ -1382,12 +1975,30 @@ function createWorkoutHTML(workout) {
             </div>
 
 
-            <button
-                class="delete-workout"
-                data-id="${workout.id}"
-            >
-                Delete
-            </button>
+            <div class="chip-actions">
+
+                ${
+                    isPlanned
+                        ? `
+                            <button
+                                class="complete-workout"
+                                data-id="${workout.id}"
+                                title="Mark as completed"
+                            >
+                                &check; Complete
+                            </button>
+                        `
+                        : ""
+                }
+
+                <button
+                    class="delete-workout"
+                    data-id="${workout.id}"
+                >
+                    Delete
+                </button>
+
+            </div>
 
         </div>
 
