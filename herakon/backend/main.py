@@ -205,11 +205,13 @@ class WorkoutRequest(BaseModel):
     workout_type: str
     date: str
     status: str = "completed"          # "completed" | "planned"
-    distance: float | None = None      # km — continuous sessions, or auto-total for structured ones
-    duration: int | None = None        # seconds — continuous/gym sessions, or auto-total
-    sets: int | None = None            # gym only: number of sets
-    reps: int | None = None            # gym only: reps per set
-    structured_sets: list[dict] | None = None   # swim/bike/run interval builder rows
+    distance: float | None = None      # km — total for the whole workout
+    duration: int | None = None        # seconds — estimated/target total duration
+    actual_duration: int | None = None  # seconds — filled in when completing, if it differs from the estimate
+    sections: list[dict] | None = None  # swim/bike/run: [{name, sets: [...]}]
+    exercises: list[dict] | None = None  # gym: [{muscle_group, exercise, sets, reps, weight, notes}]
+    sets: int | None = None            # legacy gym quick-entry (old data only — new gym uses `exercises`)
+    reps: int | None = None            # legacy gym quick-entry (old data only — new gym uses `exercises`)
     plan_week_start: str | None = None  # Monday date string — tags which planned week this belongs to
     linked_id: str | None = None        # pairs a brick bike+run session together
     notes: str = ""
@@ -222,9 +224,11 @@ class WorkoutUpdateRequest(BaseModel):
     status: str | None = None
     distance: float | None = None
     duration: int | None = None
+    actual_duration: int | None = None
+    sections: list[dict] | None = None
+    exercises: list[dict] | None = None
     sets: int | None = None
     reps: int | None = None
-    structured_sets: list[dict] | None = None
     plan_week_start: str | None = None
     linked_id: str | None = None
     notes: str | None = None
@@ -304,9 +308,11 @@ def add_workout(
         "status": workout.status,
         "distance": workout.distance,
         "duration": workout.duration,
+        "actual_duration": workout.actual_duration,
+        "sections": workout.sections,
+        "exercises": workout.exercises,
         "sets": workout.sets,
         "reps": workout.reps,
-        "structured_sets": workout.structured_sets,
         "plan_week_start": workout.plan_week_start,
         "linked_id": workout.linked_id,
         "notes": workout.notes
@@ -418,6 +424,26 @@ def update_workout(
     save_workouts(workouts)
 
     return workout
+
+
+# ==================================================
+# GYM EXERCISE LIBRARY
+# ==================================================
+
+@app.get("/gym/exercise-library")
+def gym_exercise_library(
+    authorization: str | None = Header(default=None)
+):
+
+    get_authenticated_user(
+        authorization
+    )
+
+    return {
+        "muscle_groups": list(planner.EXERCISE_LIBRARY.keys()),
+        "exercises_by_muscle_group": planner.EXERCISE_LIBRARY,
+        "swim_strokes": planner.SWIM_STROKES,
+    }
 
 
 # ==================================================

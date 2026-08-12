@@ -10,21 +10,30 @@ const SPORT_ICONS = {
 const ENDURANCE_TYPES = [
     { value: "recovery", label: "Recovery" },
     { value: "aerobic", label: "Aerobic" },
-    { value: "interval", label: "Interval" },
-    { value: "tempo", label: "Tempo" },
     { value: "long", label: "Long" },
+    { value: "tempo", label: "Tempo / Threshold" },
+    { value: "interval", label: "Interval" },
+    { value: "technique", label: "Technique" },
+    { value: "brick", label: "Brick" },
+    { value: "race_pace", label: "Race Pace" },
+    { value: "test", label: "Test / Benchmark" },
     { value: "other", label: "Other" }
 ];
 
 const GYM_TYPES = [
-    { value: "push", label: "Push" },
-    { value: "pull", label: "Pull" },
+    { value: "chest", label: "Chest" },
+    { value: "back", label: "Back" },
+    { value: "shoulders", label: "Shoulders" },
+    { value: "biceps", label: "Biceps" },
+    { value: "triceps", label: "Triceps" },
     { value: "legs", label: "Legs" },
-    { value: "upper_body", label: "Upper Body" },
-    { value: "lower_body", label: "Lower Body" },
-    { value: "full_body", label: "Full Body" },
+    { value: "glutes", label: "Glutes" },
     { value: "core", label: "Core" },
-    { value: "other", label: "Other" }
+    { value: "full_body", label: "Full Body" }
+];
+
+const SECTION_NAME_OPTIONS = [
+    "Warm-up", "Technique", "Main", "Finisher", "Cool-down", "Recovery", "Custom"
 ];
 
 
@@ -156,27 +165,39 @@ const typeSelect =
 const distanceFieldGroup =
     document.getElementById("distance-field-group");
 
-const setsRepsFieldGroup =
-    document.getElementById("sets-reps-field-group");
-
 const durationFieldGroup =
     document.getElementById("duration-field-group");
 
-const structuredSetsFieldGroup =
-    document.getElementById("structured-sets-field-group");
+const entryModeToggle =
+    document.getElementById("entry-mode-toggle");
 
-const structuredSetsList =
-    document.getElementById("structured-sets-list");
+const entryModeButtons =
+    document.querySelectorAll(".entry-mode-button");
 
-const addStructuredSetButton =
-    document.getElementById("add-structured-set-button");
+const sectionsFieldGroup =
+    document.getElementById("sections-field-group");
 
-const structuredSummaryEls = {
-    distance: document.getElementById("structured-summary-distance"),
-    work: document.getElementById("structured-summary-work"),
-    rest: document.getElementById("structured-summary-rest"),
-    total: document.getElementById("structured-summary-total")
+const sectionsList =
+    document.getElementById("sections-list");
+
+const addSectionButton =
+    document.getElementById("add-section-button");
+
+const sectionsSummaryEls = {
+    distance: document.getElementById("sections-summary-distance"),
+    work: document.getElementById("sections-summary-work"),
+    rest: document.getElementById("sections-summary-rest"),
+    total: document.getElementById("sections-summary-total")
 };
+
+const exercisesFieldGroup =
+    document.getElementById("exercises-field-group");
+
+const exercisesList =
+    document.getElementById("exercises-list");
+
+const addExerciseButton =
+    document.getElementById("add-exercise-button");
 
 const workoutModalTitle =
     document.getElementById("workout-modal-title");
@@ -217,6 +238,32 @@ const todayPlannedContent =
 
 
 // ==================================================
+// ELEMENTS — WORKOUT DETAIL MODAL
+// ==================================================
+
+const detailModalOverlay =
+    document.getElementById("detail-modal-overlay");
+
+const detailModalTitle =
+    document.getElementById("detail-modal-title");
+
+const detailModalBody =
+    document.getElementById("detail-modal-body");
+
+const closeDetailModalButton =
+    document.getElementById("close-detail-modal");
+
+const detailEditButton =
+    document.getElementById("detail-edit-button");
+
+const detailCompleteButton =
+    document.getElementById("detail-complete-button");
+
+const detailDeleteButton =
+    document.getElementById("detail-delete-button");
+
+
+// ==================================================
 // STATE
 // ==================================================
 
@@ -224,9 +271,16 @@ let allWorkouts = null;
 let loadError = null;
 let currentPage = "today";
 let weekStart = getMonday(new Date());
-let editingWorkoutId = null;   // set when completing a planned workout
-let structuredSets = [];       // rows in the current structured-set builder
-let structuredSetIdCounter = 0;
+let editingWorkoutId = null;   // set when completing/editing an existing workout
+let editingForceComplete = false;  // true only for the "complete a planned workout" flow
+let entryMode = "quick";       // "quick" | "structured" — swim/bike/run only
+let sections = [];             // structured-workout builder: [{id, name, customName, sets:[...]}]
+let sectionIdCounter = 0;
+let setIdCounter = 0;
+let exercises = [];            // gym builder: [{id, muscleGroup, exercise, sets, reps, weight, notes}]
+let exerciseIdCounter = 0;
+let exerciseLibrary = null;    // fetched once from /gym/exercise-library
+let detailModalWorkout = null; // workout currently shown in the detail modal
 
 
 // ==================================================
@@ -805,6 +859,7 @@ function renderToday() {
         `;
 
         attachDeleteHandlers(todayContent);
+        attachDetailClickHandlers(todayContent);
 
     }
 
@@ -836,6 +891,7 @@ function renderPlannedToday(todayStr) {
 
     attachDeleteHandlers(todayPlannedContent);
     attachCompleteHandlers(todayPlannedContent);
+    attachDetailClickHandlers(todayPlannedContent);
 }
 
 
@@ -950,6 +1006,7 @@ function renderCalendar() {
 
     attachDeleteHandlers(calendarGrid);
     attachCompleteHandlers(calendarGrid);
+    attachDetailClickHandlers(calendarGrid);
 }
 
 
@@ -1143,7 +1200,7 @@ function createCalendarChip(workout) {
     const isPlanned = workout.status === "planned";
 
     return `
-        <div class="calendar-workout-chip sport-${workout.sport} ${isPlanned ? "status-planned" : ""}">
+        <div class="calendar-workout-chip sport-${workout.sport} ${isPlanned ? "status-planned" : ""}" data-open-detail="${workout.id}">
 
             <div class="chip-main">
 
@@ -1238,14 +1295,6 @@ function populateWorkoutTypeOptions(sport) {
 }
 
 
-function isIntervalWorkout() {
-    return (
-        sportSelect.value !== "gym" &&
-        typeSelect.value === "interval"
-    );
-}
-
-
 function isGymWorkout() {
     return sportSelect.value === "gym";
 }
@@ -1254,15 +1303,20 @@ function isGymWorkout() {
 function updateFieldVisibility() {
 
     const gym = isGymWorkout();
-    const interval = isIntervalWorkout();
+    const structured = !gym && entryMode === "structured";
 
-    distanceFieldGroup.classList.toggle("hidden", gym || interval);
-    setsRepsFieldGroup.classList.toggle("hidden", !gym);
-    structuredSetsFieldGroup.classList.toggle("hidden", !interval);
-    durationFieldGroup.classList.toggle("hidden", interval);
+    entryModeToggle.classList.toggle("hidden", gym);
+    distanceFieldGroup.classList.toggle("hidden", gym || structured);
+    durationFieldGroup.classList.toggle("hidden", structured);
+    sectionsFieldGroup.classList.toggle("hidden", !structured);
+    exercisesFieldGroup.classList.toggle("hidden", !gym);
 
-    if (interval && structuredSets.length === 0) {
-        addStructuredSetRow();
+    if (structured && sections.length === 0) {
+        addSection();
+    }
+
+    if (gym && exercises.length === 0) {
+        addExercise();
     }
 }
 
@@ -1278,114 +1332,332 @@ typeSelect.addEventListener(
 );
 
 
-// ==================================================
-// STRUCTURED SET BUILDER
-// ==================================================
-//
-// Each row: { id, distance (km), duration (minutes per rep),
-//             pace (free text), reps, restSeconds }
-//
-// Pace time estimation only understands common "M:SS/unit" formats
-// (e.g. "4:25/km", "2:00/100m"). Anything else is just a label — no
-// time is guessed from it. See planner.py's module docstring for the
-// same principle applied on the backend planning side.
-
-function addStructuredSetRow() {
-
-    structuredSetIdCounter += 1;
-
-    structuredSets.push({
-        id: structuredSetIdCounter,
-        distance: "",
-        duration: "",
-        pace: "",
-        reps: "1",
-        restSeconds: ""
+entryModeButtons.forEach(button => {
+    button.addEventListener("click", () => {
+        entryMode = button.dataset.mode;
+        entryModeButtons.forEach(b => b.classList.toggle("active", b === button));
+        updateFieldVisibility();
     });
+});
 
-    renderStructuredSetsList();
+
+// ==================================================
+// GYM EXERCISE LIBRARY (fetched once, cached)
+// ==================================================
+
+async function loadExerciseLibrary() {
+
+    if (exerciseLibrary) {
+        return exerciseLibrary;
+    }
+
+    const token = localStorage.getItem("herakon_token");
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/gym/exercise-library`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Failed to load exercise library.");
+        }
+
+        exerciseLibrary = data;
+        return exerciseLibrary;
+
+    } catch (error) {
+
+        // Minimal fallback so the exercise builder still works if the
+        // library fetch fails for some reason.
+        exerciseLibrary = {
+            muscle_groups: ["full_body"],
+            exercises_by_muscle_group: { full_body: ["Bodyweight exercise"] },
+            swim_strokes: ["FC", "Breast", "Back", "Fly", "IM", "Kick", "Drill"]
+        };
+        return exerciseLibrary;
+
+    }
+
 }
 
 
-function removeStructuredSetRow(id) {
+// ==================================================
+// STRUCTURED WORKOUT BUILDER (sections + sets)
+// ==================================================
+//
+// Each section: { id, name, customName, sets: [...] }
+// Each set: { id, distance, duration, pace, stroke, reps, restSeconds, notes }
+//
+// Swim set distances are entered in METRES (matching how pool
+// sessions are actually described); bike/run set distances are in
+// km, matching the rest of the app. Pace time estimation only
+// understands common "M:SS/unit" formats — anything else (e.g.
+// "threshold") is just a label, same principle as planner.py.
 
-    structuredSets = structuredSets.filter(set => set.id !== id);
+function addSection() {
 
-    if (structuredSets.length === 0) {
-        addStructuredSetRow();
+    sectionIdCounter += 1;
+
+    const section = {
+        id: sectionIdCounter,
+        name: sections.length === 0 ? "Warm-up" : "Main",
+        customName: "",
+        sets: []
+    };
+
+    sections.push(section);
+
+    addSetToSection(section.id, true);
+
+    renderSections();
+}
+
+
+function removeSection(id) {
+
+    sections = sections.filter(s => s.id !== id);
+
+    if (sections.length === 0) {
+        addSection();
         return;
     }
 
-    renderStructuredSetsList();
+    renderSections();
 }
 
 
-function updateStructuredSetField(id, field, value) {
+function addSetToSection(sectionId, skipRender) {
 
-    const set = structuredSets.find(s => s.id === id);
+    setIdCounter += 1;
+
+    const section = sections.find(s => s.id === sectionId);
+
+    if (!section) {
+        return;
+    }
+
+    section.sets.push({
+        id: setIdCounter,
+        distance: "",
+        duration: "",
+        pace: "",
+        stroke: "FC",
+        reps: "1",
+        restSeconds: "",
+        notes: ""
+    });
+
+    if (!skipRender) {
+        renderSections();
+    }
+}
+
+
+function removeSetFromSection(sectionId, setId) {
+
+    const section = sections.find(s => s.id === sectionId);
+
+    if (!section) {
+        return;
+    }
+
+    section.sets = section.sets.filter(s => s.id !== setId);
+
+    if (section.sets.length === 0) {
+        addSetToSection(sectionId, true);
+    }
+
+    renderSections();
+}
+
+
+function updateSectionName(sectionId, name, customName) {
+
+    const section = sections.find(s => s.id === sectionId);
+
+    if (section) {
+        section.name = name;
+        if (customName !== undefined) {
+            section.customName = customName;
+        }
+    }
+
+    renderSections();
+}
+
+
+function updateSetField(sectionId, setId, field, value) {
+
+    const section = sections.find(s => s.id === sectionId);
+    const set = section && section.sets.find(s => s.id === setId);
 
     if (set) {
         set[field] = value;
     }
 
-    updateStructuredSetsSummary();
+    updateSectionsSummary();
 }
 
 
-function renderStructuredSetsList() {
+function renderSections() {
 
-    structuredSetsList.innerHTML = structuredSets.map((set, index) => `
-        <div class="structured-set-row" data-set-id="${set.id}">
+    const sport = sportSelect.value;
+    const isSwim = sport === "swim";
 
-            <div class="structured-set-row-header">
-                <span>Set ${index + 1}</span>
-                <button type="button" class="remove-set-button" data-remove-id="${set.id}">
+    sectionsList.innerHTML = sections.map(section => `
+        <div class="section-block" data-section-id="${section.id}">
+
+            <div class="section-block-header">
+
+                <select class="section-name-select" data-section-id="${section.id}">
+                    ${SECTION_NAME_OPTIONS.map(name => `
+                        <option value="${name}" ${section.name === name ? "selected" : ""}>${name}</option>
+                    `).join("")}
+                </select>
+
+                ${section.name === "Custom" ? `
+                    <input type="text" class="section-custom-name" placeholder="Section name"
+                        data-section-id="${section.id}" value="${section.customName}">
+                ` : ""}
+
+                <button type="button" class="remove-section-button" data-remove-section-id="${section.id}">
                     &times;
                 </button>
-            </div>
-
-            <div class="structured-set-grid">
-
-                <label>
-                    Distance (km)
-                    <input type="number" step="0.01" min="0" placeholder="e.g. 1.0"
-                        data-set-id="${set.id}" data-field="distance" value="${set.distance}">
-                </label>
-
-                <label>
-                    Duration per rep (min)
-                    <input type="number" step="0.1" min="0" placeholder="e.g. 5"
-                        data-set-id="${set.id}" data-field="duration" value="${set.duration}">
-                </label>
-
-                <label>
-                    Pace / intensity
-                    <input type="text" placeholder="e.g. 4:25/km"
-                        data-set-id="${set.id}" data-field="pace" value="${set.pace}">
-                </label>
-
-                <label>
-                    Reps
-                    <input type="number" step="1" min="1" placeholder="e.g. 4"
-                        data-set-id="${set.id}" data-field="reps" value="${set.reps}">
-                </label>
-
-                <label>
-                    Rest between reps (sec)
-                    <input type="number" step="1" min="0" placeholder="e.g. 90"
-                        data-set-id="${set.id}" data-field="restSeconds" value="${set.restSeconds}">
-                </label>
 
             </div>
+
+            <div class="section-sets-list">
+                ${section.sets.map((set, index) => `
+                    <div class="structured-set-row" data-set-id="${set.id}">
+
+                        <div class="structured-set-row-header">
+                            <span>Set ${index + 1}</span>
+                            <button type="button" class="remove-set-button"
+                                data-section-id="${section.id}" data-remove-id="${set.id}">
+                                &times;
+                            </button>
+                        </div>
+
+                        <div class="structured-set-grid">
+
+                            <label>
+                                Distance (${isSwim ? "m" : "km"})
+                                <input type="number" step="${isSwim ? "1" : "0.01"}" min="0"
+                                    placeholder="${isSwim ? "e.g. 200" : "e.g. 1.0"}"
+                                    data-section-id="${section.id}" data-set-id="${set.id}"
+                                    data-field="distance" value="${set.distance}">
+                            </label>
+
+                            <label>
+                                Duration per rep (min)
+                                <input type="number" step="0.1" min="0" placeholder="e.g. 5"
+                                    data-section-id="${section.id}" data-set-id="${set.id}"
+                                    data-field="duration" value="${set.duration}">
+                            </label>
+
+                            <label>
+                                Pace / intensity
+                                <input type="text" placeholder="${isSwim ? "e.g. 1:55/100m" : "e.g. 4:25/km"}"
+                                    data-section-id="${section.id}" data-set-id="${set.id}"
+                                    data-field="pace" value="${set.pace}">
+                            </label>
+
+                            ${isSwim ? `
+                                <label>
+                                    Stroke
+                                    <select data-section-id="${section.id}" data-set-id="${set.id}" data-field="stroke">
+                                        ${SWIM_STROKES.map(stroke => `
+                                            <option value="${stroke}" ${set.stroke === stroke ? "selected" : ""}>${stroke}</option>
+                                        `).join("")}
+                                    </select>
+                                </label>
+                            ` : ""}
+
+                            <label>
+                                Reps
+                                <input type="number" step="1" min="1" placeholder="e.g. 4"
+                                    data-section-id="${section.id}" data-set-id="${set.id}"
+                                    data-field="reps" value="${set.reps}">
+                            </label>
+
+                            <label>
+                                Rest between reps (sec)
+                                <input type="number" step="1" min="0" placeholder="e.g. 90"
+                                    data-section-id="${section.id}" data-set-id="${set.id}"
+                                    data-field="restSeconds" value="${set.restSeconds}">
+                            </label>
+
+                            <label>
+                                Notes
+                                <input type="text" placeholder="e.g. long strokes"
+                                    data-section-id="${section.id}" data-set-id="${set.id}"
+                                    data-field="notes" value="${set.notes}">
+                            </label>
+
+                        </div>
+
+                    </div>
+                `).join("")}
+            </div>
+
+            <button type="button" class="text-button add-set-to-section-button" data-section-id="${section.id}">
+                + Add Set
+            </button>
 
         </div>
     `).join("");
 
-    structuredSetsList
-        .querySelectorAll("input")
+    sectionsList
+        .querySelectorAll(".section-name-select")
+        .forEach(select => {
+            select.addEventListener("change", () => {
+                updateSectionName(Number(select.dataset.sectionId), select.value);
+            });
+        });
+
+    sectionsList
+        .querySelectorAll(".section-custom-name")
         .forEach(input => {
             input.addEventListener("input", () => {
-                updateStructuredSetField(
+                updateSectionName(Number(input.dataset.sectionId), "Custom", input.value);
+            });
+        });
+
+    sectionsList
+        .querySelectorAll(".remove-section-button")
+        .forEach(button => {
+            button.addEventListener("click", () => {
+                removeSection(Number(button.dataset.removeSectionId));
+            });
+        });
+
+    sectionsList
+        .querySelectorAll(".add-set-to-section-button")
+        .forEach(button => {
+            button.addEventListener("click", () => {
+                addSetToSection(Number(button.dataset.sectionId));
+            });
+        });
+
+    sectionsList
+        .querySelectorAll(".remove-set-button")
+        .forEach(button => {
+            button.addEventListener("click", () => {
+                removeSetFromSection(Number(button.dataset.sectionId), Number(button.dataset.removeId));
+            });
+        });
+
+    sectionsList
+        .querySelectorAll(".structured-set-grid input, .structured-set-grid select")
+        .forEach(input => {
+            const eventName = input.tagName === "SELECT" ? "change" : "input";
+            input.addEventListener(eventName, () => {
+                updateSetField(
+                    Number(input.dataset.sectionId),
                     Number(input.dataset.setId),
                     input.dataset.field,
                     input.value
@@ -1393,22 +1665,11 @@ function renderStructuredSetsList() {
             });
         });
 
-    structuredSetsList
-        .querySelectorAll(".remove-set-button")
-        .forEach(button => {
-            button.addEventListener("click", () => {
-                removeStructuredSetRow(Number(button.dataset.removeId));
-            });
-        });
-
-    updateStructuredSetsSummary();
+    updateSectionsSummary();
 }
 
 
-addStructuredSetButton.addEventListener(
-    "click",
-    addStructuredSetRow
-);
+addSectionButton.addEventListener("click", addSection);
 
 
 // Parses "M:SS/unit" pace strings into seconds-per-km. Returns null
@@ -1448,9 +1709,11 @@ function parsePaceSecondsPerKm(pace) {
 
 
 // Computes { distanceKm, workSeconds, restSeconds } for one set row.
-function computeSetTotals(set) {
+// `sport` matters because swim set distances are entered in metres.
+function computeSetTotals(set, sport) {
 
-    const distancePerRep = Number(set.distance) || 0;
+    const rawDistance = Number(set.distance) || 0;
+    const distancePerRepKm = sport === "swim" ? rawDistance / 1000 : rawDistance;
     const manualDurationPerRep = Number(set.duration) || 0;
     const reps = Math.max(Number(set.reps) || 1, 1);
     const restPerGap = Number(set.restSeconds) || 0;
@@ -1459,14 +1722,14 @@ function computeSetTotals(set) {
 
     if (manualDurationPerRep > 0) {
         perRepSeconds = manualDurationPerRep * 60;
-    } else if (distancePerRep > 0) {
+    } else if (distancePerRepKm > 0) {
         const secondsPerKm = parsePaceSecondsPerKm(set.pace);
         if (secondsPerKm !== null) {
-            perRepSeconds = secondsPerKm * distancePerRep;
+            perRepSeconds = secondsPerKm * distancePerRepKm;
         }
     }
 
-    const setDistance = distancePerRep * reps;
+    const setDistance = distancePerRepKm * reps;
     const setWorkSeconds = perRepSeconds * reps;
     const setRestSeconds = restPerGap * Math.max(reps - 1, 0);
 
@@ -1478,46 +1741,272 @@ function computeSetTotals(set) {
 }
 
 
-function computeStructuredSetsTotals() {
+function computeSectionsTotals() {
 
-    return structuredSets.reduce((totals, set) => {
-        const setTotals = computeSetTotals(set);
+    const sport = sportSelect.value;
+
+    return sections.reduce((totals, section) => {
+        const sectionTotals = section.sets.reduce((sub, set) => {
+            const setTotals = computeSetTotals(set, sport);
+            return {
+                distanceKm: sub.distanceKm + setTotals.distanceKm,
+                workSeconds: sub.workSeconds + setTotals.workSeconds,
+                restSeconds: sub.restSeconds + setTotals.restSeconds
+            };
+        }, { distanceKm: 0, workSeconds: 0, restSeconds: 0 });
+
         return {
-            distanceKm: totals.distanceKm + setTotals.distanceKm,
-            workSeconds: totals.workSeconds + setTotals.workSeconds,
-            restSeconds: totals.restSeconds + setTotals.restSeconds
+            distanceKm: totals.distanceKm + sectionTotals.distanceKm,
+            workSeconds: totals.workSeconds + sectionTotals.workSeconds,
+            restSeconds: totals.restSeconds + sectionTotals.restSeconds
         };
     }, { distanceKm: 0, workSeconds: 0, restSeconds: 0 });
 }
 
 
-function updateStructuredSetsSummary() {
+function updateSectionsSummary() {
 
-    const totals = computeStructuredSetsTotals();
+    const totals = computeSectionsTotals();
 
-    structuredSummaryEls.distance.textContent =
+    sectionsSummaryEls.distance.textContent =
         totals.distanceKm > 0 ? `${totals.distanceKm.toFixed(2)} km` : "—";
 
-    structuredSummaryEls.work.textContent =
+    sectionsSummaryEls.work.textContent =
         totals.workSeconds > 0 ? formatHoursMinutes(totals.workSeconds) : "—";
 
-    structuredSummaryEls.rest.textContent =
+    sectionsSummaryEls.rest.textContent =
         totals.restSeconds > 0 ? formatHoursMinutes(totals.restSeconds) : "—";
 
     const totalSeconds = totals.workSeconds + totals.restSeconds;
 
-    structuredSummaryEls.total.textContent =
+    sectionsSummaryEls.total.textContent =
         totalSeconds > 0 ? formatHoursMinutes(totalSeconds) : "—";
 }
+
+
+// ==================================================
+// GYM EXERCISE BUILDER
+// ==================================================
+
+function addExercise() {
+
+    exerciseIdCounter += 1;
+
+    const defaultGroup = (exerciseLibrary && exerciseLibrary.muscle_groups[0]) || "full_body";
+    const defaultExercise = (exerciseLibrary &&
+        exerciseLibrary.exercises_by_muscle_group[defaultGroup] &&
+        exerciseLibrary.exercises_by_muscle_group[defaultGroup][0]) || "";
+
+    exercises.push({
+        id: exerciseIdCounter,
+        muscleGroup: defaultGroup,
+        exercise: defaultExercise,
+        sets: "3",
+        reps: "10",
+        weight: "",
+        notes: ""
+    });
+
+    renderExercises();
+}
+
+
+function removeExercise(id) {
+
+    exercises = exercises.filter(e => e.id !== id);
+
+    if (exercises.length === 0) {
+        addExercise();
+        return;
+    }
+
+    renderExercises();
+}
+
+
+function updateExerciseField(id, field, value) {
+
+    const exercise = exercises.find(e => e.id === id);
+
+    if (!exercise) {
+        return;
+    }
+
+    exercise[field] = value;
+
+    if (field === "muscleGroup") {
+        const pool = (exerciseLibrary && exerciseLibrary.exercises_by_muscle_group[value]) || [];
+        exercise.exercise = pool[0] || "";
+        renderExercises();
+    }
+}
+
+
+function renderExercises() {
+
+    const groups = (exerciseLibrary && exerciseLibrary.muscle_groups) || ["full_body"];
+
+    exercisesList.innerHTML = exercises.map((exercise, index) => {
+
+        const pool = (exerciseLibrary && exerciseLibrary.exercises_by_muscle_group[exercise.muscleGroup]) || [];
+
+        return `
+            <div class="exercise-row" data-exercise-id="${exercise.id}">
+
+                <div class="exercise-row-header">
+                    <span>Exercise ${index + 1}</span>
+                    <button type="button" class="remove-exercise-button" data-remove-id="${exercise.id}">
+                        &times;
+                    </button>
+                </div>
+
+                <div class="exercise-row-grid">
+
+                    <label>
+                        Muscle group
+                        <select data-exercise-id="${exercise.id}" data-field="muscleGroup">
+                            ${groups.map(group => `
+                                <option value="${group}" ${exercise.muscleGroup === group ? "selected" : ""}>
+                                    ${formatWorkoutType(group)}
+                                </option>
+                            `).join("")}
+                        </select>
+                    </label>
+
+                    <label>
+                        Exercise
+                        <select data-exercise-id="${exercise.id}" data-field="exercise">
+                            ${pool.map(name => `
+                                <option value="${name}" ${exercise.exercise === name ? "selected" : ""}>${name}</option>
+                            `).join("")}
+                        </select>
+                    </label>
+
+                    <label>
+                        Sets
+                        <input type="number" step="1" min="1" value="${exercise.sets}"
+                            data-exercise-id="${exercise.id}" data-field="sets">
+                    </label>
+
+                    <label>
+                        Reps
+                        <input type="number" step="1" min="1" value="${exercise.reps}"
+                            data-exercise-id="${exercise.id}" data-field="reps">
+                    </label>
+
+                    <label>
+                        Weight (kg)
+                        <input type="number" step="0.5" min="0" placeholder="bodyweight" value="${exercise.weight}"
+                            data-exercise-id="${exercise.id}" data-field="weight">
+                    </label>
+
+                    <label>
+                        Notes
+                        <input type="text" placeholder="optional" value="${exercise.notes}"
+                            data-exercise-id="${exercise.id}" data-field="notes">
+                    </label>
+
+                </div>
+
+            </div>
+        `;
+    }).join("");
+
+    exercisesList
+        .querySelectorAll(".remove-exercise-button")
+        .forEach(button => {
+            button.addEventListener("click", () => {
+                removeExercise(Number(button.dataset.removeId));
+            });
+        });
+
+    exercisesList
+        .querySelectorAll("[data-exercise-id][data-field]")
+        .forEach(input => {
+            const eventName = input.tagName === "SELECT" ? "change" : "input";
+            input.addEventListener(eventName, () => {
+                updateExerciseField(
+                    Number(input.dataset.exerciseId),
+                    input.dataset.field,
+                    input.value
+                );
+            });
+        });
+}
+
+
+addExerciseButton.addEventListener("click", addExercise);
 
 
 // ==================================================
 // WORKOUT MODAL
 // ==================================================
 
-function openWorkoutModal(defaultDateStr) {
+function resetBuilderState() {
+
+    entryMode = "quick";
+    entryModeButtons.forEach(b => b.classList.toggle("active", b.dataset.mode === "quick"));
+
+    sections = [];
+    sectionIdCounter = 0;
+    setIdCounter = 0;
+
+    exercises = [];
+    exerciseIdCounter = 0;
+}
+
+
+function sectionsFromWorkout(workout) {
+
+    return (workout.sections || []).map(section => {
+
+        sectionIdCounter += 1;
+
+        return {
+            id: sectionIdCounter,
+            name: SECTION_NAME_OPTIONS.includes(section.name) ? section.name : "Custom",
+            customName: SECTION_NAME_OPTIONS.includes(section.name) ? "" : section.name,
+            sets: (section.sets || []).map(set => {
+                setIdCounter += 1;
+                return {
+                    id: setIdCounter,
+                    distance: set.distance ?? "",
+                    duration: set.duration ? Number((set.duration / 60).toFixed(2)) : "",
+                    pace: set.pace || "",
+                    stroke: set.stroke || "FC",
+                    reps: set.reps ?? "1",
+                    restSeconds: set.rest_seconds ?? "",
+                    notes: set.notes || ""
+                };
+            })
+        };
+    });
+}
+
+
+function exercisesFromWorkout(workout) {
+
+    return (workout.exercises || []).map(exercise => {
+
+        exerciseIdCounter += 1;
+
+        return {
+            id: exerciseIdCounter,
+            muscleGroup: exercise.muscle_group || "full_body",
+            exercise: exercise.exercise || "",
+            sets: exercise.sets ?? "3",
+            reps: exercise.reps ?? "10",
+            weight: exercise.weight ?? "",
+            notes: exercise.notes || ""
+        };
+    });
+}
+
+
+async function openWorkoutModal(defaultDateStr) {
 
     editingWorkoutId = null;
+    editingForceComplete = false;
 
     workoutForm.reset();
 
@@ -1527,8 +2016,9 @@ function openWorkoutModal(defaultDateStr) {
     workoutModalTitle.textContent = "Add workout";
     workoutFormSubmitButton.textContent = "Save workout";
 
-    structuredSets = [];
-    structuredSetIdCounter = 0;
+    resetBuilderState();
+
+    await loadExerciseLibrary();
 
     populateWorkoutTypeOptions("");
     updateFieldVisibility();
@@ -1540,9 +2030,10 @@ function openWorkoutModal(defaultDateStr) {
 }
 
 
-// Opens the modal pre-filled with a planned workout's values, so the
-// person can adjust them to what actually happened and mark it done.
-function openCompleteWorkoutModal(workout) {
+// Shared pre-fill used by both the "complete a planned workout" flow
+// and the general "edit workout" flow — including any generated
+// sections/exercises, so nothing is lost when editing.
+async function prefillModalFromWorkout(workout, title, submitLabel) {
 
     editingWorkoutId = workout.id;
 
@@ -1551,45 +2042,82 @@ function openCompleteWorkoutModal(workout) {
     workoutFormError.classList.add("hidden");
     workoutFormError.textContent = "";
 
-    workoutModalTitle.textContent = "Complete workout";
-    workoutFormSubmitButton.textContent = "Mark as completed";
+    workoutModalTitle.textContent = title;
+    workoutFormSubmitButton.textContent = submitLabel;
 
-    structuredSets = [];
-    structuredSetIdCounter = 0;
+    resetBuilderState();
+
+    await loadExerciseLibrary();
 
     sportSelect.value = workout.sport;
     populateWorkoutTypeOptions(workout.sport);
     typeSelect.value = workout.workout_type;
 
     document.getElementById("workout-date").value = workout.date;
-    document.getElementById("workout-distance").value = workout.distance ?? "";
-    document.getElementById("workout-duration").value =
-        workout.duration ? Math.round(workout.duration / 60) : "";
-    document.getElementById("workout-sets").value = workout.sets ?? "";
-    document.getElementById("workout-reps").value = workout.reps ?? "";
+    document.getElementById("workout-notes").value = workout.notes || "";
 
-    const isPlannedInterval =
-        workout.sport !== "gym" &&
-        workout.workout_type === "interval" &&
-        !workout.structured_sets;
+    if (workout.sport === "gym") {
 
-    const plannedTargetHint =
-        isPlannedInterval && (workout.distance || workout.duration)
-            ? `Planned target: ${workout.distance ? `${workout.distance} km` : ""}${workout.distance && workout.duration ? " / " : ""}${workout.duration ? formatDuration(workout.duration) : ""}. Enter what you actually did below.`
-            : "";
+        exercises = exercisesFromWorkout(workout);
+        if (exercises.length === 0) {
+            addExercise();
+        }
 
-    document.getElementById("workout-notes").value =
-        [plannedTargetHint, workout.notes || ""].filter(Boolean).join(" ");
+    } else if (workout.sections && workout.sections.length > 0) {
+
+        entryMode = "structured";
+        entryModeButtons.forEach(b => b.classList.toggle("active", b.dataset.mode === "structured"));
+        sections = sectionsFromWorkout(workout);
+
+    } else {
+
+        document.getElementById("workout-distance").value = workout.distance ?? "";
+        document.getElementById("workout-duration").value =
+            (workout.actual_duration ?? workout.duration)
+                ? Math.round((workout.actual_duration ?? workout.duration) / 60)
+                : "";
+
+    }
 
     updateFieldVisibility();
 
+    if (workout.sport === "gym") {
+        renderExercises();
+    } else if (entryMode === "structured") {
+        renderSections();
+    }
+
     workoutModalOverlay.classList.remove("hidden");
+}
+
+
+// Pre-fills the modal with a planned workout's generated sections/
+// exercises so the person can adjust them to what actually happened
+// and mark the session done.
+async function openCompleteWorkoutModal(workout) {
+
+    editingForceComplete = true;
+
+    await prefillModalFromWorkout(workout, "Complete workout", "Mark as completed");
+}
+
+
+// General edit — works on planned or completed workouts, and never
+// changes status on its own (see submit handler).
+async function openEditWorkoutModal(workout) {
+
+    editingForceComplete = false;
+
+    const title = workout.status === "planned" ? "Edit planned workout" : "Edit workout";
+
+    await prefillModalFromWorkout(workout, title, "Save changes");
 }
 
 
 function closeWorkoutModal() {
 
     editingWorkoutId = null;
+    editingForceComplete = false;
 
     workoutForm.reset();
 
@@ -1617,6 +2145,170 @@ workoutModalOverlay.addEventListener(
         }
     }
 );
+
+
+// ==================================================
+// WORKOUT DETAIL MODAL (read-only expanded view)
+// ==================================================
+
+// Formats one structured set into a readable line, e.g.
+// "5 × 200m FC @ 1:55–2:00/100m", plus an optional rest sub-line.
+function formatSetLine(set, sport) {
+
+    const reps = Number(set.reps) || 1;
+    const repsPrefix = reps > 1 ? `${reps} \u00d7 ` : "";
+
+    let amount = "";
+    if (set.distance) {
+        amount = sport === "swim" ? `${set.distance}m` : `${set.distance}km`;
+    } else if (set.duration) {
+        amount = `${Math.round(set.duration / 60)} min`;
+    }
+
+    const strokePart = (sport === "swim" && set.stroke) ? ` ${set.stroke}` : "";
+    const pacePart = set.pace ? ` @ ${set.pace}` : "";
+
+    const main = `${repsPrefix}${amount}${strokePart}${pacePart}`.trim() ||
+        (set.notes || "Set");
+
+    const subParts = [];
+    if (set.rest_seconds) {
+        subParts.push(`Rest: ${formatRestSeconds(set.rest_seconds)}`);
+    }
+    if (set.notes && main !== set.notes) {
+        subParts.push(set.notes);
+    }
+
+    return { main, sub: subParts.join(" \u00b7 ") };
+}
+
+
+function renderDetailSections(workout) {
+
+    return workout.sections.map(section => `
+        <div class="detail-section">
+            <h4 class="detail-section-name">${section.name}</h4>
+            ${section.sets.map(set => {
+                const line = formatSetLine(set, workout.sport);
+                return `
+                    <p class="detail-set-line">${line.main}</p>
+                    ${line.sub ? `<p class="detail-set-subline">${line.sub}</p>` : ""}
+                `;
+            }).join("")}
+        </div>
+    `).join("");
+}
+
+
+function renderDetailExercises(workout) {
+
+    return `
+        <div class="detail-section">
+            <h4 class="detail-section-name">Exercises</h4>
+            ${workout.exercises.map(exercise => `
+                <div class="detail-exercise">
+                    <span class="detail-exercise-name">${exercise.exercise}</span>
+                    <span class="detail-exercise-meta">
+                        ${exercise.weight ? `${exercise.weight}kg \u00d7 ` : "Bodyweight \u00d7 "}${exercise.reps} \u00d7 ${exercise.sets} sets
+                    </span>
+                </div>
+            `).join("")}
+        </div>
+    `;
+}
+
+
+function openDetailModal(workout) {
+
+    detailModalWorkout = workout;
+
+    const isPlanned = workout.status === "planned";
+    const effectiveDuration = workout.actual_duration ?? workout.duration;
+    const hasDistance = workout.sport !== "gym" && workout.distance;
+
+    detailModalTitle.textContent =
+        `${formatWorkoutType(workout.workout_type)} ${capitalize(workout.sport)}`;
+
+    const primaryValue = hasDistance
+        ? `${workout.distance} km`
+        : (effectiveDuration ? formatHoursMinutes(effectiveDuration) : "\u2014");
+
+    const primaryLabel = hasDistance
+        ? "Total distance"
+        : (workout.actual_duration ? "Actual time" : "Estimated time");
+
+    const secondaryLine = hasDistance && effectiveDuration
+        ? `<span class="detail-total-label">${workout.actual_duration ? "Actual" : "Estimated"} time: ${formatHoursMinutes(effectiveDuration)}</span>`
+        : "";
+
+    let bodyHTML = `
+        <span class="detail-status-tag">${isPlanned ? "Planned" : "Completed"}</span>
+
+        <div class="detail-total">
+            <div class="detail-total-value">${primaryValue}</div>
+            <span class="detail-total-label">${primaryLabel}</span>
+            ${secondaryLine}
+        </div>
+    `;
+
+    if (workout.sport === "gym" && workout.exercises && workout.exercises.length > 0) {
+        bodyHTML += renderDetailExercises(workout);
+    } else if (workout.sections && workout.sections.length > 0) {
+        bodyHTML += renderDetailSections(workout);
+    }
+
+    if (workout.notes) {
+        bodyHTML += `<p class="detail-notes">${workout.notes}</p>`;
+    }
+
+    detailModalBody.innerHTML = bodyHTML;
+
+    detailCompleteButton.classList.toggle("hidden", !isPlanned);
+    detailCompleteButton.dataset.id = workout.id;
+    detailEditButton.dataset.id = workout.id;
+    detailDeleteButton.dataset.id = workout.id;
+
+    detailModalOverlay.classList.remove("hidden");
+}
+
+
+function closeDetailModal() {
+
+    detailModalWorkout = null;
+
+    detailModalOverlay.classList.add("hidden");
+}
+
+
+closeDetailModalButton.addEventListener("click", closeDetailModal);
+
+detailModalOverlay.addEventListener("click", (event) => {
+    if (event.target === detailModalOverlay) {
+        closeDetailModal();
+    }
+});
+
+detailEditButton.addEventListener("click", () => {
+    if (detailModalWorkout) {
+        closeDetailModal();
+        openEditWorkoutModal(detailModalWorkout);
+    }
+});
+
+detailCompleteButton.addEventListener("click", () => {
+    if (detailModalWorkout) {
+        closeDetailModal();
+        openCompleteWorkoutModal(detailModalWorkout);
+    }
+});
+
+detailDeleteButton.addEventListener("click", () => {
+    if (detailModalWorkout) {
+        const id = detailModalWorkout.id;
+        closeDetailModal();
+        deleteWorkout(id);
+    }
+});
 
 
 // ==================================================
@@ -1648,21 +2340,11 @@ workoutForm.addEventListener(
             ).value;
 
         const gym = isGymWorkout();
-        const interval = isIntervalWorkout();
+        const structured = !gym && entryMode === "structured";
 
         const distanceValue =
             document.getElementById(
                 "workout-distance"
-            ).value;
-
-        const setsValue =
-            document.getElementById(
-                "workout-sets"
-            ).value;
-
-        const repsValue =
-            document.getElementById(
-                "workout-reps"
             ).value;
 
         const durationValue =
@@ -1678,31 +2360,42 @@ workoutForm.addEventListener(
 
         let distance = null;
         let duration = null;
-        let sets = null;
-        let reps = null;
-        let structuredSetsPayload = null;
+        let sectionsPayload = null;
+        let exercisesPayload = null;
 
         if (gym) {
 
-            sets = setsValue ? Number(setsValue) : null;
-            reps = repsValue ? Number(repsValue) : null;
+            exercisesPayload = exercises.map(exercise => ({
+                muscle_group: exercise.muscleGroup,
+                exercise: exercise.exercise,
+                sets: exercise.sets ? Number(exercise.sets) : null,
+                reps: exercise.reps ? Number(exercise.reps) : null,
+                weight: exercise.weight ? Number(exercise.weight) : null,
+                notes: exercise.notes || null
+            }));
+
             duration = durationValue ? Number(durationValue) * 60 : null;
 
-        } else if (interval) {
+        } else if (structured) {
 
-            const totals = computeStructuredSetsTotals();
+            const totals = computeSectionsTotals();
 
             distance = totals.distanceKm > 0 ? Number(totals.distanceKm.toFixed(2)) : null;
             duration = (totals.workSeconds + totals.restSeconds) > 0
                 ? Math.round(totals.workSeconds + totals.restSeconds)
                 : null;
 
-            structuredSetsPayload = structuredSets.map(set => ({
-                distance: set.distance ? Number(set.distance) : null,
-                duration: set.duration ? Number(set.duration) * 60 : null,
-                pace: set.pace || null,
-                reps: set.reps ? Number(set.reps) : 1,
-                rest_seconds: set.restSeconds ? Number(set.restSeconds) : null
+            sectionsPayload = sections.map(section => ({
+                name: section.name === "Custom" ? (section.customName || "Custom") : section.name,
+                sets: section.sets.map(set => ({
+                    distance: set.distance ? Number(set.distance) : null,
+                    duration: set.duration ? Math.round(Number(set.duration) * 60) : null,
+                    pace: set.pace || null,
+                    stroke: sport === "swim" ? (set.stroke || null) : null,
+                    reps: set.reps ? Number(set.reps) : 1,
+                    rest_seconds: set.restSeconds ? Number(set.restSeconds) : null,
+                    notes: set.notes || null
+                }))
             }));
 
         } else {
@@ -1719,14 +2412,21 @@ workoutForm.addEventListener(
             date,
             distance,
             duration,
-            sets,
-            reps,
-            structured_sets: structuredSetsPayload,
+            sections: sectionsPayload,
+            exercises: exercisesPayload,
+            sets: null,
+            reps: null,
             notes
         };
 
-        if (editingWorkoutId) {
+        if (editingWorkoutId && editingForceComplete) {
             workout.status = "completed";
+            workout.actual_duration = duration;
+            // Leave the original planned `duration` (the estimate)
+            // untouched on the existing record — only PATCH fields
+            // that are actually present in the request body get
+            // applied, so deleting the key here preserves it.
+            delete workout.duration;
         }
 
 
@@ -1840,6 +2540,28 @@ function attachCompleteHandlers(container) {
 }
 
 
+function attachDetailClickHandlers(container) {
+
+    container
+        .querySelectorAll("[data-open-detail]")
+        .forEach(el => {
+
+            el.addEventListener("click", () => {
+
+                const workout = allWorkouts.find(
+                    w => w.id === el.dataset.openDetail
+                );
+
+                if (workout) {
+                    openDetailModal(workout);
+                }
+            });
+
+        });
+
+}
+
+
 async function deleteWorkout(workoutId) {
 
     const confirmed =
@@ -1923,7 +2645,7 @@ function createWorkoutHTML(workout) {
 
     return `
 
-        <div class="workout-card ${isPlanned ? "status-planned" : ""}">
+        <div class="workout-card ${isPlanned ? "status-planned" : ""}" data-open-detail="${workout.id}">
 
             <div class="workout-main">
 
@@ -2085,6 +2807,24 @@ function formatHoursMinutes(totalSeconds) {
 }
 
 
+// Unlike formatHoursMinutes (which rounds to the nearest minute —
+// fine for whole-workout totals), rest intervals between reps are
+// often under a minute and need second-level precision.
+function formatRestSeconds(seconds) {
+
+    const total = Math.round(seconds);
+
+    if (total < 60) {
+        return `${total}s`;
+    }
+
+    const minutes = Math.floor(total / 60);
+    const remainder = total % 60;
+
+    return remainder > 0 ? `${minutes}m ${remainder}s` : `${minutes}m`;
+}
+
+
 function formatDuration(seconds) {
 
     const minutes =
@@ -2137,27 +2877,14 @@ function buildMetaParts(workout) {
         parts.push(`${workout.distance} km`);
     }
 
-    if (workout.sets || workout.reps) {
-
-        const setsLabel =
-            workout.sets ? `${workout.sets} sets` : "";
-
-        const repsLabel =
-            workout.reps ? `${workout.reps} reps` : "";
-
-        parts.push(
-            [setsLabel, repsLabel]
-                .filter(Boolean)
-                .join(" \u00d7 ")
-        );
+    if (workout.exercises && workout.exercises.length > 0) {
+        parts.push(`${workout.exercises.length} exercise${workout.exercises.length === 1 ? "" : "s"}`);
     }
 
-    if (workout.pace) {
-        parts.push(`Pace ${workout.pace}`);
-    }
+    const effectiveDuration = workout.actual_duration ?? workout.duration;
 
-    if (workout.duration) {
-        parts.push(formatDuration(workout.duration));
+    if (effectiveDuration) {
+        parts.push(formatDuration(effectiveDuration));
     }
 
     return parts;

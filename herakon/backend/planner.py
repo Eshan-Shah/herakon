@@ -85,6 +85,7 @@ FALLBACK_TARGETS = {
     ("swim", "technique"): {"distance": 1.5, "duration": 40 * 60},
     ("swim", "interval"): {"distance": 2.0, "duration": 45 * 60},
     ("swim", "race_pace"): {"distance": 1.8, "duration": 40 * 60},
+    ("swim", "test"): {"distance": 1.0, "duration": 25 * 60},
     ("bike", "recovery"): {"distance": 20.0, "duration": 40 * 60},
     ("bike", "aerobic"): {"distance": 35.0, "duration": 75 * 60},
     ("bike", "long"): {"distance": 70.0, "duration": 150 * 60},
@@ -92,6 +93,7 @@ FALLBACK_TARGETS = {
     ("bike", "interval"): {"distance": 35.0, "duration": 70 * 60},
     ("bike", "brick"): {"distance": 40.0, "duration": 80 * 60},
     ("bike", "race_pace"): {"distance": 45.0, "duration": 90 * 60},
+    ("bike", "test"): {"distance": 20.0, "duration": 30 * 60},
     ("run", "recovery"): {"distance": 5.0, "duration": 30 * 60},
     ("run", "aerobic"): {"distance": 8.0, "duration": 45 * 60},
     ("run", "long"): {"distance": 14.0, "duration": 80 * 60},
@@ -99,11 +101,115 @@ FALLBACK_TARGETS = {
     ("run", "interval"): {"distance": 8.0, "duration": 40 * 60},
     ("run", "race_pace"): {"distance": 10.0, "duration": 50 * 60},
     ("run", "brick"): {"distance": 5.0, "duration": 28 * 60},
+    ("run", "test"): {"distance": 3.0, "duration": 20 * 60},
     ("gym", "full_body"): {"duration": 45 * 60},
-    ("gym", "upper_body"): {"duration": 40 * 60},
-    ("gym", "lower_body"): {"duration": 45 * 60},
+    ("gym", "chest"): {"duration": 40 * 60},
+    ("gym", "back"): {"duration": 40 * 60},
+    ("gym", "shoulders"): {"duration": 35 * 60},
+    ("gym", "biceps"): {"duration": 30 * 60},
+    ("gym", "triceps"): {"duration": 30 * 60},
+    ("gym", "legs"): {"duration": 45 * 60},
+    ("gym", "glutes"): {"duration": 35 * 60},
     ("gym", "core"): {"duration": 25 * 60},
+    ("gym", "test"): {"duration": 35 * 60},
 }
+
+
+# A small, curated exercise library, keyed by muscle group. Kept
+# intentionally short — this is meant to cover common movements, not
+# be exhaustive. Add to these lists freely.
+EXERCISE_LIBRARY = {
+    "chest": [
+        "Bench Press", "Incline Bench Press", "Dumbbell Bench Press",
+        "Incline Dumbbell Press", "Cable Fly", "Pec Deck", "Push-ups",
+    ],
+    "back": [
+        "Pull-ups", "Lat Pulldown", "Barbell Row", "Dumbbell Row",
+        "Seated Cable Row", "Chest-supported Row",
+    ],
+    "shoulders": [
+        "Overhead Press", "Dumbbell Shoulder Press", "Lateral Raise",
+        "Front Raise", "Rear Delt Fly", "Arnold Press",
+    ],
+    "biceps": [
+        "Barbell Curl", "Dumbbell Curl", "Hammer Curl",
+        "Preacher Curl", "Cable Curl",
+    ],
+    "triceps": [
+        "Tricep Pushdown", "Overhead Tricep Extension",
+        "Close-Grip Bench Press", "Skull Crushers", "Dips",
+    ],
+    "legs": [
+        "Squat", "Leg Press", "Romanian Deadlift",
+        "Bulgarian Split Squat", "Leg Extension", "Leg Curl", "Calf Raise",
+    ],
+    "glutes": [
+        "Hip Thrust", "Glute Bridge", "Cable Kickback",
+        "Romanian Deadlift", "Bulgarian Split Squat",
+    ],
+    "core": [
+        "Plank", "Hanging Leg Raise", "Cable Crunch",
+        "Russian Twist", "Ab Wheel Rollout",
+    ],
+    "full_body": [
+        "Deadlift", "Clean", "Kettlebell Swing", "Thruster", "Burpees",
+    ],
+}
+
+# For a "full_body" gym session, pick one exercise from each of these
+# groups (in order) rather than pulling only from EXERCISE_LIBRARY's
+# own "full_body" list — gives a more realistic full-body session.
+FULL_BODY_ROTATION = ["legs", "chest", "back", "shoulders", "core"]
+
+# Sport-appropriate strokes, offered on swim sets.
+SWIM_STROKES = ["FC", "Breast", "Back", "Fly", "IM", "Kick", "Drill"]
+
+
+# ==================================================
+# PACE STRING HELPERS
+# ==================================================
+#
+# These mirror the pace parser used client-side in app.js. Pace
+# strings only support common "M:SS/unit" formats — anything else
+# (e.g. "threshold", "zone 2") is treated as a label, not parsed.
+
+PACE_PATTERN = re.compile(
+    r"^(\d{1,2}):(\d{2})\s*/\s*(km|mi|100m|50m|25m|500m)?$", re.IGNORECASE
+)
+
+UNIT_TO_KM = {
+    "km": 1, "mi": 1.60934, "100m": 0.1, "50m": 0.05, "25m": 0.025, "500m": 0.5,
+}
+
+
+def parse_pace_seconds_per_km(pace):
+    if not pace:
+        return None
+
+    match = PACE_PATTERN.match(pace.strip())
+    if not match:
+        return None
+
+    minutes, seconds, unit = match.groups()
+    unit = (unit or "km").lower()
+    pace_seconds = int(minutes) * 60 + int(seconds)
+
+    return pace_seconds / UNIT_TO_KM[unit]
+
+
+def format_pace_seconds_per_km(seconds_per_km, unit="km"):
+    """Formats a seconds/km value back into a 'M:SS/unit' string,
+    converting to the given display unit first (e.g. '100m' for
+    swim paces)."""
+
+    unit_km = UNIT_TO_KM.get(unit, 1)
+    seconds = seconds_per_km * unit_km
+    minutes = int(seconds // 60)
+    remaining = round(seconds % 60)
+    if remaining == 60:
+        minutes += 1
+        remaining = 0
+    return f"{minutes}:{remaining:02d}/{unit}"
 
 
 # ==================================================
@@ -333,13 +439,13 @@ PHASE_TYPE_POOL = {
         "swim": ["aerobic", "technique", "recovery"],
         "bike": ["aerobic", "recovery", "long"],
         "run": ["aerobic", "long", "recovery"],
-        "gym": ["full_body", "upper_body", "lower_body"],
+        "gym": ["full_body", "legs", "back"],
     },
     "build": {
         "swim": ["interval", "aerobic", "technique"],
         "bike": ["tempo", "interval", "long", "aerobic"],
         "run": ["interval", "tempo", "long", "aerobic"],
-        "gym": ["upper_body", "lower_body", "core"],
+        "gym": ["legs", "back", "chest", "shoulders"],
     },
     "peak": {
         "swim": ["race_pace", "technique", "aerobic"],
@@ -351,12 +457,291 @@ PHASE_TYPE_POOL = {
 
 
 # ==================================================
+# STEP 4.5 — HISTORICAL PACE + STRUCTURED SESSION CONTENT
+# ==================================================
+#
+# These functions turn a plain {distance, duration} target into the
+# structured sections/exercises Herakon now displays and logs
+# workouts with. Everything here is template-based and deterministic
+# on purpose — see the module docstring.
+
+def extract_pace_range(workouts, sport, workout_type=None, sample_size=5):
+    """
+    Looks through completed workouts for parseable pace strings inside
+    structured sets, and returns a rough (low, high) seconds-per-km
+    range from the most recent `sample_size` values found. Returns
+    None if there's nothing usable yet.
+
+    If `workout_type` is given, prefers sets from that workout type
+    first, falling back to any workout of the same sport.
+    """
+
+    completed = [
+        w for w in workouts
+        if w.get("status", "completed") == "completed"
+        and w.get("sport") == sport
+        and w.get("sections")
+    ]
+
+    completed.sort(key=lambda w: w["date"], reverse=True)
+
+    def collect_paces(pool):
+        paces = []
+        for w in pool:
+            for section in (w.get("sections") or []):
+                for s in (section.get("sets") or []):
+                    seconds_per_km = parse_pace_seconds_per_km(s.get("pace"))
+                    if seconds_per_km is not None:
+                        paces.append(seconds_per_km)
+        return paces
+
+    if workout_type:
+        typed = [w for w in completed if w.get("workout_type") == workout_type]
+        paces = collect_paces(typed)[:sample_size]
+        if paces:
+            return min(paces), max(paces)
+
+    paces = collect_paces(completed)[:sample_size]
+    if not paces:
+        return None
+
+    return min(paces), max(paces)
+
+
+def has_any_pace_history(workouts, sport):
+    """Used by the benchmark/test scheduler — true if we've never
+    recorded a usable pace for this sport."""
+
+    return extract_pace_range(workouts, sport) is not None
+
+
+def _round_step(value, step):
+    if value <= 0:
+        return 0
+    return max(round(value / step) * step, step)
+
+
+def build_endurance_sections(sport, workout_type, target_distance, target_duration, raw_workouts):
+    """
+    Builds the section/set list for a swim/bike/run session. Swim set
+    distances are in metres (matching how pool sessions are actually
+    described); bike/run set distances are in km, matching the rest
+    of the app. `target_distance` is always in km on the way in.
+    """
+
+    pace_range = extract_pace_range(raw_workouts, sport, workout_type)
+
+    pace_text = None
+    if pace_range:
+        low, high = pace_range
+        unit = "100m" if sport == "swim" else "km"
+        pace_text = f"{format_pace_seconds_per_km(high, unit)}\u2013{format_pace_seconds_per_km(low, unit)}"
+
+    def easy_set(distance_km, duration_seconds, note="easy"):
+        set_row = {
+            "distance": None, "duration": None, "pace": None,
+            "reps": 1, "rest_seconds": None, "notes": note,
+        }
+        if sport == "swim":
+            set_row["distance"] = _round_step((distance_km or 0) * 1000, 50) or None
+            set_row["stroke"] = "FC"
+        else:
+            set_row["distance"] = round(distance_km, 2) if distance_km else None
+            set_row["duration"] = duration_seconds
+        return set_row
+
+    total_distance = target_distance or 0
+    total_duration = target_duration or 0
+
+    if workout_type == "test":
+        # Benchmark session: no assumed pace, just a controlled protocol.
+        if sport == "swim":
+            main_set = {
+                "distance": None, "duration": 10 * 60, "pace": None,
+                "reps": 1, "rest_seconds": None, "stroke": "FC",
+                "notes": "Swim continuously — record distance covered",
+            }
+        elif sport == "bike":
+            main_set = {
+                "distance": None, "duration": 20 * 60, "pace": None,
+                "reps": 1, "rest_seconds": None,
+                "notes": "Controlled time-trial effort — record average power/speed",
+            }
+        else:
+            main_set = {
+                "distance": None, "duration": None, "pace": None,
+                "reps": 1, "rest_seconds": None,
+                "notes": "Time a continuous 3km effort at maximum sustainable pace",
+            }
+        return [
+            {"name": "Warm-up", "sets": [easy_set(total_distance * 0.15, round(total_duration * 0.2), "easy, building gradually")]},
+            {"name": "Main", "sets": [main_set]},
+            {"name": "Cool-down", "sets": [easy_set(total_distance * 0.1, round(total_duration * 0.15))]},
+        ]
+
+    if workout_type == "interval":
+
+        warm_up_distance = total_distance * 0.15
+        cool_down_distance = total_distance * 0.1
+        main_distance = max(total_distance - warm_up_distance - cool_down_distance, 0)
+
+        if sport == "swim":
+            rep_distance_m = 200
+            reps = max(round((main_distance * 1000) / rep_distance_m), 2)
+            main_set = {
+                "distance": rep_distance_m, "duration": None, "pace": pace_text,
+                "reps": reps, "rest_seconds": 25, "stroke": "FC", "notes": None,
+            }
+        elif sport == "bike":
+            rep_minutes = 5
+            main_seconds = total_duration * 0.7
+            reps = max(round(main_seconds / (rep_minutes * 60)), 2)
+            main_set = {
+                "distance": None, "duration": rep_minutes * 60, "pace": pace_text or "hard effort",
+                "reps": reps, "rest_seconds": 180, "notes": None,
+            }
+        else:
+            rep_distance_km = 1.0
+            reps = max(round(main_distance / rep_distance_km), 2)
+            main_set = {
+                "distance": rep_distance_km, "duration": None, "pace": pace_text,
+                "reps": reps, "rest_seconds": 90, "notes": None,
+            }
+
+        return [
+            {"name": "Warm-up", "sets": [easy_set(warm_up_distance, round(total_duration * 0.15))]},
+            {"name": "Main", "sets": [main_set]},
+            {"name": "Cool-down", "sets": [easy_set(cool_down_distance, round(total_duration * 0.1))]},
+        ]
+
+    if sport == "swim" and workout_type in ("aerobic", "recovery", "long"):
+
+        warm_up_m = _round_step(total_distance * 1000 * 0.15, 50)
+        technique_m = _round_step(total_distance * 1000 * 0.15, 50)
+        finisher_m = _round_step(total_distance * 1000 * 0.1, 50)
+        cool_down_m = _round_step(total_distance * 1000 * 0.1, 50)
+        main_m = max(
+            _round_step(total_distance * 1000 - warm_up_m - technique_m - finisher_m - cool_down_m, 50),
+            200,
+        )
+        main_reps = max(round(main_m / 200), 1)
+
+        return [
+            {"name": "Warm-up", "sets": [
+                {"distance": warm_up_m or 200, "duration": None, "pace": None, "reps": 1,
+                 "rest_seconds": None, "stroke": "FC", "notes": "easy"},
+            ]},
+            {"name": "Technique", "sets": [
+                {"distance": 50, "duration": None, "pace": None, "reps": 4,
+                 "rest_seconds": 15, "stroke": "Drill", "notes": "catch-up drill"},
+                {"distance": 50, "duration": None, "pace": None, "reps": 4,
+                 "rest_seconds": 15, "stroke": "FC", "notes": "long strokes"},
+            ]},
+            {"name": "Main", "sets": [
+                {"distance": 200, "duration": None, "pace": pace_text, "reps": main_reps,
+                 "rest_seconds": 25, "stroke": "FC", "notes": None},
+            ]},
+            {"name": "Finisher", "sets": [
+                {"distance": 50, "duration": None, "pace": None, "reps": 4,
+                 "rest_seconds": 20, "stroke": "FC", "notes": "25m strong / 25m easy"},
+            ]},
+            {"name": "Cool-down", "sets": [
+                {"distance": cool_down_m or 200, "duration": None, "pace": None, "reps": 1,
+                 "rest_seconds": None, "stroke": "FC", "notes": "easy"},
+            ]},
+        ]
+
+    if sport == "swim" and workout_type == "technique":
+        return [
+            {"name": "Warm-up", "sets": [
+                {"distance": 200, "duration": None, "pace": None, "reps": 1,
+                 "rest_seconds": None, "stroke": "FC", "notes": "easy"},
+            ]},
+            {"name": "Technique", "sets": [
+                {"distance": 50, "duration": None, "pace": None, "reps": 6,
+                 "rest_seconds": 20, "stroke": "Drill", "notes": "catch-up drill"},
+                {"distance": 100, "duration": None, "pace": None, "reps": 4,
+                 "rest_seconds": 20, "stroke": "FC", "notes": "focus on technique"},
+            ]},
+            {"name": "Cool-down", "sets": [
+                {"distance": 200, "duration": None, "pace": None, "reps": 1,
+                 "rest_seconds": None, "stroke": "FC", "notes": "easy"},
+            ]},
+        ]
+
+    # Generic continuous session (bike/run recovery/aerobic/long/tempo,
+    # race_pace, or swim race_pace/brick).
+    warm_up_distance = total_distance * 0.15
+    cool_down_distance = total_distance * 0.1
+    main_distance = max(total_distance - warm_up_distance - cool_down_distance, 0)
+    warm_up_duration = round(total_duration * 0.15)
+    cool_down_duration = round(total_duration * 0.1)
+    main_duration = max(total_duration - warm_up_duration - cool_down_duration, 0)
+
+    main_note = "aerobic effort" if workout_type in ("aerobic", "recovery", "long") else workout_type.replace("_", " ")
+
+    main_set = easy_set(main_distance, main_duration, main_note)
+    if pace_text:
+        main_set["pace"] = pace_text
+        main_set["notes"] = None
+
+    return [
+        {"name": "Warm-up", "sets": [easy_set(warm_up_distance, warm_up_duration)]},
+        {"name": "Main", "sets": [main_set]},
+        {"name": "Cool-down", "sets": [easy_set(cool_down_distance, cool_down_duration)]},
+    ]
+
+
+def build_gym_exercises(muscle_group, raw_workouts):
+    """
+    Picks 3-4 exercises for the given muscle group (or a rotation of
+    groups, for full_body), suggesting a weight from historical
+    performance of that exact exercise if available.
+    """
+
+    completed_gym = [
+        w for w in raw_workouts
+        if w.get("status", "completed") == "completed"
+        and w.get("sport") == "gym"
+        and w.get("exercises")
+    ]
+
+    def recent_weight_for(exercise_name):
+        weights = []
+        for w in sorted(completed_gym, key=lambda w: w["date"], reverse=True):
+            for ex in (w.get("exercises") or []):
+                if ex.get("exercise") == exercise_name and ex.get("weight"):
+                    weights.append(ex["weight"])
+        return weights[0] if weights else None
+
+    if muscle_group == "full_body":
+        picks = [(group, EXERCISE_LIBRARY[group][0]) for group in FULL_BODY_ROTATION]
+    else:
+        pool = EXERCISE_LIBRARY.get(muscle_group, EXERCISE_LIBRARY["full_body"])
+        picks = [(muscle_group, name) for name in pool[:4]]
+
+    exercises = []
+    for group, name in picks:
+        exercises.append({
+            "muscle_group": group,
+            "exercise": name,
+            "sets": 3,
+            "reps": 10,
+            "weight": recent_weight_for(name),
+            "notes": None,
+        })
+
+    return exercises
+
+
+# ==================================================
 # STEP 5 — BUILD THE WEEK'S SESSION LIST + ASSIGN DAYS
 # ==================================================
 
 def generate_week_plan(
     user_id,
     analysis,
+    raw_workouts,
     start_date,
     end_date,
     phase,
@@ -365,6 +750,11 @@ def generate_week_plan(
     """
     Produces a list of planned workout dicts (not yet saved) covering
     every day from start_date to end_date inclusive.
+
+    `raw_workouts` (this user's full completed+planned history) is
+    used to pull historical paces and gym weights for the sections/
+    exercises generated below — separate from `analysis`, which only
+    holds the summarised numbers.
 
     `volume_scale` lets the "replan remaining week" flow shrink the
     plan when part of the week is already done — see main.py.
@@ -396,6 +786,21 @@ def generate_week_plan(
             # hard type if the phase pool actually contains one.
             workout_type = pool[i % len(pool)]
             sessions_to_place.append({"sport": sport, "workout_type": workout_type})
+
+    # Benchmark/test scheduling: if we've never recorded a usable pace
+    # for an endurance sport, swap its first session this week for a
+    # controlled test session instead — just enough to get a baseline.
+    # This naturally stops firing once a pace has been logged, so it
+    # never generates tests "constantly".
+    for sport in ["swim", "bike", "run"]:
+        if targets[sport] == 0:
+            continue
+        if has_any_pace_history(raw_workouts, sport):
+            continue
+        for session in sessions_to_place:
+            if session["sport"] == sport and session["workout_type"] != "brick":
+                session["workout_type"] = "test"
+                break
 
     # Peak-phase brick handling: replace a bike + a run slot with a
     # linked brick pair, if both exist and phase pool suggests brick.
@@ -547,18 +952,33 @@ def generate_week_plan(
                 session["sport"], session["workout_type"], analysis, phase
             )
 
+            sport = session["sport"]
+            workout_type = session["workout_type"]
+
+            sections = None
+            exercises = None
+
+            if sport == "gym":
+                exercises = build_gym_exercises(workout_type, raw_workouts)
+            else:
+                sections = build_endurance_sections(
+                    sport, workout_type, target["distance"], target["duration"], raw_workouts
+                )
+
             workout = {
                 "id": secrets.token_hex(8),
                 "user_id": user_id,
-                "sport": session["sport"],
-                "workout_type": session["workout_type"],
+                "sport": sport,
+                "workout_type": workout_type,
                 "date": to_str(d),
                 "status": "planned",
-                "distance": target["distance"] if session["sport"] != "gym" else None,
+                "distance": target["distance"] if sport != "gym" else None,
                 "duration": target["duration"],
-                "sets": 3 if session["sport"] == "gym" else None,
-                "reps": 10 if session["sport"] == "gym" else None,
-                "structured_sets": None,
+                "actual_duration": None,
+                "sections": sections,
+                "exercises": exercises,
+                "sets": None,
+                "reps": None,
                 "plan_week_start": plan_week_start,
                 "linked_id": session.get("linked_id"),
                 "notes": "",
@@ -585,7 +1005,7 @@ def plan_next_week(user_id, workouts, today, phase_override=None):
     next_sunday = next_monday + timedelta(days=6)
 
     plan = generate_week_plan(
-        user_id, analysis, next_monday, next_sunday, phase, volume_scale=1.0
+        user_id, analysis, workouts, next_monday, next_sunday, phase, volume_scale=1.0
     )
 
     return {
@@ -661,7 +1081,7 @@ def replan_remaining_week(user_id, workouts, today, phase_override=None):
             volume_scale = max(volume_scale / ahead_ratio, 0.3)
 
     plan = generate_week_plan(
-        user_id, analysis, today, this_sunday, phase, volume_scale=volume_scale
+        user_id, analysis, workouts, today, this_sunday, phase, volume_scale=volume_scale
     )
 
     return {

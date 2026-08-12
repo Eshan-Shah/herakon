@@ -433,6 +433,19 @@
                 </label>
 
 
+                <div id="entry-mode-toggle" class="entry-mode-toggle hidden">
+
+                    <button type="button" class="entry-mode-button active" data-mode="quick">
+                        Quick entry
+                    </button>
+
+                    <button type="button" class="entry-mode-button" data-mode="structured">
+                        Structured workout
+                    </button>
+
+                </div>
+
+
                 <label id="distance-field-group">
                     Distance (km)
 
@@ -447,67 +460,51 @@
                 </label>
 
 
-                <div id="sets-reps-field-group" class="sets-reps-row hidden">
+                <div id="sections-field-group" class="hidden">
 
-                    <label>
-                        Sets
+                    <div id="sections-list"></div>
 
-                        <input
-                            id="workout-sets"
-                            type="number"
-                            step="1"
-                            min="0"
-                            placeholder="e.g. 4"
-                        >
+                    <button
+                        type="button"
+                        id="add-section-button"
+                        class="text-button add-set-button"
+                    >
+                        + Add Section
+                    </button>
 
-                    </label>
-
-                    <label>
-                        Reps
-
-                        <input
-                            id="workout-reps"
-                            type="number"
-                            step="1"
-                            min="0"
-                            placeholder="e.g. 10"
-                        >
-
-                    </label>
+                    <div class="structured-sets-summary" id="sections-summary">
+                        <div>
+                            <span>Total distance</span>
+                            <strong id="sections-summary-distance">—</strong>
+                        </div>
+                        <div>
+                            <span>Work time</span>
+                            <strong id="sections-summary-work">—</strong>
+                        </div>
+                        <div>
+                            <span>Rest time</span>
+                            <strong id="sections-summary-rest">—</strong>
+                        </div>
+                        <div>
+                            <span>Total time</span>
+                            <strong id="sections-summary-total">—</strong>
+                        </div>
+                    </div>
 
                 </div>
 
 
-                <div id="structured-sets-field-group" class="hidden">
+                <div id="exercises-field-group" class="hidden">
 
-                    <div id="structured-sets-list"></div>
+                    <div id="exercises-list"></div>
 
                     <button
                         type="button"
-                        id="add-structured-set-button"
+                        id="add-exercise-button"
                         class="text-button add-set-button"
                     >
-                        + Add Set
+                        + Add Exercise
                     </button>
-
-                    <div class="structured-sets-summary" id="structured-sets-summary">
-                        <div>
-                            <span>Total distance</span>
-                            <strong id="structured-summary-distance">—</strong>
-                        </div>
-                        <div>
-                            <span>Work time</span>
-                            <strong id="structured-summary-work">—</strong>
-                        </div>
-                        <div>
-                            <span>Rest time</span>
-                            <strong id="structured-summary-rest">—</strong>
-                        </div>
-                        <div>
-                            <span>Total time</span>
-                            <strong id="structured-summary-total">—</strong>
-                        </div>
-                    </div>
 
                 </div>
 
@@ -557,6 +554,45 @@
                 </div>
 
             </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== WORKOUT DETAIL MODAL ==================== -->
+
+    <div id="detail-modal-overlay" class="modal-overlay hidden">
+
+        <div class="modal detail-modal">
+
+            <div class="modal-header">
+
+                <h3 id="detail-modal-title">Workout</h3>
+
+                <button id="close-detail-modal" class="icon-button" aria-label="Close">
+                    &times;
+                </button>
+
+            </div>
+
+            <div id="detail-modal-body"></div>
+
+            <div class="form-buttons detail-modal-buttons">
+
+                <button type="button" id="detail-edit-button" class="secondary-button">
+                    Edit
+                </button>
+
+                <button type="button" id="detail-complete-button" class="primary-button hidden">
+                    Mark as completed
+                </button>
+
+                <button type="button" id="detail-delete-button" class="delete-workout">
+                    Delete
+                </button>
+
+            </div>
 
         </div>
 

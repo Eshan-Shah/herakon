@@ -442,6 +442,8 @@ button:hover {
     align-items: center;
 
     gap: 12px;
+
+    cursor: pointer;
 }
 
 .workout-main {
@@ -865,6 +867,8 @@ button:hover {
     gap: 6px;
 
     border-left: 3px solid var(--muted);
+
+    cursor: pointer;
 }
 
 .calendar-workout-chip.sport-swim { border-left-color: var(--swim); }
@@ -1127,6 +1131,353 @@ button:hover {
 }
 
 
+/* ==================== ENTRY MODE TOGGLE ==================== */
+
+.entry-mode-toggle {
+    display: flex;
+
+    gap: 6px;
+
+    background: var(--background);
+
+    border-radius: 10px;
+
+    padding: 4px;
+
+    margin-bottom: 4px;
+}
+
+.entry-mode-button {
+    flex: 1;
+
+    background: none;
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    padding: 8px 10px;
+
+    border-radius: 7px;
+}
+
+.entry-mode-button.active {
+    background: white;
+
+    color: var(--accent-dark);
+
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+
+/* ==================== SECTION BUILDER ==================== */
+
+.section-block {
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    padding: 14px;
+
+    margin-bottom: 12px;
+
+    background: white;
+}
+
+.section-block-header {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 10px;
+}
+
+.section-name-select {
+    flex: 1;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    font: inherit;
+
+    font-size: 14px;
+
+    font-weight: 600;
+}
+
+.section-custom-name {
+    flex: 1;
+
+    padding: 9px 10px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    font: inherit;
+
+    font-size: 14px;
+}
+
+.remove-section-button {
+    background: none;
+
+    color: var(--muted);
+
+    border: none;
+
+    font-size: 18px;
+
+    line-height: 1;
+
+    padding: 2px 6px;
+
+    flex-shrink: 0;
+}
+
+.remove-section-button:hover {
+    color: #b00000;
+
+    opacity: 1;
+}
+
+.section-sets-list .structured-set-row {
+    background: var(--background);
+}
+
+.add-set-to-section-button {
+    font-size: 13px;
+
+    margin: 2px 0 0 0;
+
+    display: inline-block;
+}
+
+
+/* ==================== EXERCISE BUILDER ==================== */
+
+.exercise-row {
+    background: var(--background);
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    padding: 14px;
+
+    margin-bottom: 10px;
+}
+
+.exercise-row-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 10px;
+}
+
+.exercise-row-header span {
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+    color: var(--muted);
+}
+
+.exercise-row-grid {
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 10px;
+}
+
+.exercise-row-grid label {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 5px;
+
+    font-size: 12px;
+
+    color: var(--muted);
+}
+
+.exercise-row-grid select,
+.exercise-row-grid input {
+    padding: 10px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    font: inherit;
+
+    font-size: 14px;
+
+    background: white;
+}
+
+
+/* ==================== WORKOUT DETAIL MODAL ==================== */
+
+.detail-modal {
+    max-width: 520px;
+}
+
+.detail-total {
+    text-align: center;
+
+    background: var(--background);
+
+    border-radius: 12px;
+
+    padding: 18px;
+
+    margin-bottom: 20px;
+}
+
+.detail-total-value {
+    font-size: 26px;
+
+    font-weight: 800;
+
+    color: var(--accent-dark);
+}
+
+.detail-total-label {
+    display: block;
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+    margin-top: 4px;
+}
+
+.detail-status-tag {
+    display: inline-block;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+    padding: 3px 9px;
+
+    border-radius: 999px;
+
+    background: #eaf0ff;
+
+    color: var(--accent-dark);
+
+    margin-bottom: 10px;
+}
+
+.detail-section {
+    margin-bottom: 18px;
+}
+
+.detail-section-name {
+    font-size: 13px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+    color: var(--accent-dark);
+
+    margin: 0 0 8px 0;
+
+    padding-bottom: 6px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-set-line {
+    font-size: 14px;
+
+    margin: 0 0 3px 0;
+}
+
+.detail-set-subline {
+    font-size: 13px;
+
+    color: var(--muted);
+
+    margin: 0 0 8px 0;
+}
+
+.detail-exercise {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: baseline;
+
+    padding: 10px 0;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-exercise:last-child {
+    border-bottom: none;
+}
+
+.detail-exercise-name {
+    font-weight: 600;
+
+    font-size: 14px;
+}
+
+.detail-exercise-meta {
+    color: var(--muted);
+
+    font-size: 13px;
+}
+
+.detail-notes {
+    background: var(--background);
+
+    border-radius: 10px;
+
+    padding: 12px 14px;
+
+    font-size: 14px;
+
+    color: var(--text);
+
+    margin-top: 6px;
+}
+
+.detail-modal-buttons {
+    margin-top: 18px;
+}
+
+.detail-modal-buttons .delete-workout {
+    margin-left: auto;
+}
+
+
 /* ==================== MODAL ==================== */
 
 .modal-overlay {
@@ -1278,6 +1629,26 @@ button:hover {
 }
 
 .remove-set-button:hover {
+    color: #b00000;
+
+    opacity: 1;
+}
+
+.remove-exercise-button {
+    background: none;
+
+    color: var(--muted);
+
+    border: none;
+
+    font-size: 18px;
+
+    line-height: 1;
+
+    padding: 2px 6px;
+}
+
+.remove-exercise-button:hover {
     color: #b00000;
 
     opacity: 1;
